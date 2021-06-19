@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2028cde6c2302124f823790f57d41f82, type: 3}
+  m_Name: Rifleman
+  m_EditorClassIdentifier: 
+  PrimaryWeapon: {fileID: 7472800202805855616, guid: e9853241c4896364890541f289942fed, type: 3}
+  SecondaryWeapon: {fileID: 7472800202805855616, guid: c747fc2b40df73d4180a0bb4f1ac1968, type: 3}

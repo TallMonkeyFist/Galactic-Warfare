@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d203e54344bb5d49acca04b66acb748, type: 3}
+  m_Name: Equipment_Default
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentProfile
+  primaryWeapons:
+  - {fileID: 7472800202805855616, guid: e9853241c4896364890541f289942fed, type: 3}
+  - {fileID: 1656143958148282906, guid: 86b0915ac970fe242ac881805467787c, type: 3}
+  - {fileID: 7472800202805855616, guid: 7fa950a6df911a54ba1a791a18469979, type: 3}
+  secondaryWeapons:
+  - {fileID: 7472800202805855616, guid: c747fc2b40df73d4180a0bb4f1ac1968, type: 3}
+  primaryItems:
+  - {fileID: 5097012676053903515, guid: f46eb2029d025c94b815110d148b6c73, type: 3}
+  - {fileID: 682459674456743347, guid: ccdc5950ecf8aec43977ed35bd7d2ecc, type: 3}
+  secondaryItems:
+  - {fileID: 682459674456743347, guid: a2f13ed813c96564e84039001c85259e, type: 3}

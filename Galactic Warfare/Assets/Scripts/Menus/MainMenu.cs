@@ -11,7 +11,7 @@ public class MainMenu : MonoBehaviour
     [Tooltip("Startup panel")]
     [SerializeField] private GameObject landingPagePanel = null;
 
-    [SerializeField] private bool useSteam = false;
+    private bool useSteam = false;
 
     protected Callback<LobbyCreated_t> lobbyCreated;
     protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
@@ -20,6 +20,9 @@ public class MainMenu : MonoBehaviour
     private void Start()
     {
         Cursor.lockState = CursorLockMode.None;
+
+        FPSNetworkManager manager = (FPSNetworkManager)NetworkManager.singleton;
+        useSteam = manager.useSteam;
 
         if(!useSteam) { return; }
 
@@ -34,7 +37,7 @@ public class MainMenu : MonoBehaviour
 
         if(useSteam)
         {
-            SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, 4);
+            SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, 32);
             return;
         }
 

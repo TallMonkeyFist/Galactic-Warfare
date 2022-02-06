@@ -71,7 +71,7 @@ MonoBehaviour:
   team: -1
   canvasSpawn: {fileID: 4490466898609372704}
   gameUI: {fileID: 4848176491969025966}
-  steamId: 0
+  m_SteamID: 0
 --- !u!114 &4848176491969025966
 MonoBehaviour:
   m_ObjectHideFlags: 0

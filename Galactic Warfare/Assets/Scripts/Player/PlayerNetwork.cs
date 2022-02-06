@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class PlayerNetwork : MonoBehaviour
 {
-    [SerializeField] private float moveSpeed;
+    [SerializeField] private float moveSpeed = 7.0f;
 
-    [SerializeField] CharacterController controller;
+    [SerializeField] private CharacterController controller = null;
 
     private void Update()
     {

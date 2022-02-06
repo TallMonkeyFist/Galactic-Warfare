@@ -1,290 +1,243 @@
 ﻿using Mirror;
 using Steamworks;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class FPSNetworkManager : NetworkManager
 {
-    public Texture2D defaultImage;
-    public bool useSteam;
+	public Texture2D defaultImage;
+	public bool useSteam;
 
-    public List<FPSPlayer> Players = new List<FPSPlayer>();
+	public List<FPSPlayer> Players = new List<FPSPlayer>();
 
-    public List<NetworkIdentity> teamOne = null;
-    public List<NetworkIdentity> teamTwo = null;
-    private GamemodeManager gameManager = null;
+	public List<NetworkIdentity> teamOne = null;
+	public List<NetworkIdentity> teamTwo = null;
+	private GamemodeManager gameManager = null;
 
-    public SpawnManager spawnManager = null;
+	public SpawnManager spawnManager = null;
 
-    private bool isGameInProgress = false;
+	private bool isGameInProgress = false;
 
-    public static event Action<FPSPlayer, string> ServerSetPlayerName;
-    public static event Action ClientOnConnected;
-    public static event Action ClientOnDisconnected;
+	public static event Action<FPSPlayer, string> ServerSetPlayerName;
+	public static event Action ClientOnConnected;
+	public static event Action ClientOnDisconnected;
 
-    public Callback<AvatarImageLoaded_t> avatarImageLoaded;
+	private string lastLoadedScene;
 
-    private List<AvatarInfo> unloadedPlayerAvatars;
+	public static ulong LobbyId { get; set; }
+	public static CSteamID LobbyID { get; private set; }
 
-    private string lastLoadedScene;
+	public override void Start()
+	{
+		base.Start();
+	}
 
-    public static ulong LobbyId { get; set; }
+	#region Server
 
-    public override void Start()
-    {
-        base.Start();
-    }
+	public override void OnStartServer()
+	{
+		base.OnStartServer();
 
-    #region Server
+		gameManager = gameManager == null ? gameObject.AddComponent<GamemodeManager>() : gameManager;
+		Players = new List<FPSPlayer>();
+		teamOne = new List<NetworkIdentity>();
+		teamTwo = new List<NetworkIdentity>();
+	}
 
-    private struct AvatarInfo
-    {
-        public FPSPlayer player;
-        public int playerIndex;
-        public CSteamID SteamID;
-    }
+	public override void OnStopServer()
+	{
+		Players.Clear();
+		teamOne.Clear();
+		teamTwo.Clear();
 
-    public override void OnStartServer()
-    {
-        base.OnStartServer();
+		isGameInProgress = false;
+	}
 
-        gameManager = gameObject.AddComponent<GamemodeManager>();
-        Players = new List<FPSPlayer>();
-        teamOne = new List<NetworkIdentity>();
-        teamTwo = new List<NetworkIdentity>();
-        unloadedPlayerAvatars = new List<AvatarInfo>();
+	public void StartGame(string level)
+	{
+		if(Players.Count < 1) { return; }
 
-        if (useSteam)
-        {
-            avatarImageLoaded = Callback<AvatarImageLoaded_t>.Create(PlayerAvatarLoaded);
-        }
-    }
+		isGameInProgress = true;
 
-    public override void OnStopServer()
-    {
-        Players.Clear();
-        teamOne.Clear();
-        teamTwo.Clear();
-        unloadedPlayerAvatars.Clear();
+		ServerChangeScene(level);
+	}
 
-        isGameInProgress = false;
-    }
+	public override void OnServerChangeScene(string newSceneName)
+	{
+		spawnManager = null;
+	}
 
-    public void StartGame()
-    {
-        if(Players.Count < 1) { return; }
+	public override void OnServerSceneChanged(string sceneName)
+	{
+		int index = sceneName.LastIndexOf('/');
+		string mapName = sceneName.Substring(index + 1);
 
-        isGameInProgress = true;
+		lastLoadedScene = mapName;
 
-        ServerChangeScene("Map_02");
-    }
+		//If map name starts with Map_ then it is a valid map
+		if (mapName.StartsWith("Map_"))
+		{
+			Debug.Log("Scene was changed");
+			gameManager.StartDeathmatch();
+		}
+	}
 
-    public override void OnServerChangeScene(string newSceneName)
-    {
-        spawnManager = null;
-    }
+	public override void OnServerAddPlayer(NetworkConnection conn)
+	{
+		base.OnServerAddPlayer(conn);
 
-    public override void OnServerSceneChanged(string sceneName)
-    {
-        int index = sceneName.LastIndexOf('/');
-        string mapName = sceneName.Substring(index + 1);
+		if(conn.identity.TryGetComponent(out FPSPlayer player))
+		{
+			Players.Add(player);
 
-        lastLoadedScene = mapName;
+			player.SetSteamId(ulong.MinValue);
+			player.SetDisplayName($"Player {Players.Count}");
 
-        //If map name starts with Map_ then it is a valid map
-        if (mapName.StartsWith("Map_"))
-        {
-            Debug.Log("Scene was changed");
-            gameManager.StartDeathmatch();
-        }
-    }
+			if (SteamManager.Initialized && useSteam)
+			{
+				CSteamID steamId = SteamMatchmaking.GetLobbyMemberByIndex(new CSteamID(LobbyId), numPlayers - 1);
+				player.SetSteamId(steamId.m_SteamID);
+				player.SetDisplayName(SteamFriends.GetFriendPersonaName(steamId));
+			}
 
-    public override void OnServerAddPlayer(NetworkConnection conn)
-    {
-        base.OnServerAddPlayer(conn);
+			if(Players.Count == 1)
+			{
+				player.SetPartyOwner(true);
+			}
 
-        if(conn.identity.TryGetComponent(out FPSPlayer player))
-        {
-            Players.Add(player);
+			player.RpcUpdateInfo();
+		}
 
-            player.SetDisplayName($"Player {Players.Count}");
-            player.SetSteamId(ulong.MinValue);
+		AssignPlayerToTeam(conn);
+	}
 
-            if (SteamManager.Initialized && useSteam)
-            {
-                CSteamID steamId = SteamMatchmaking.GetLobbyMemberByIndex(new CSteamID(LobbyId), numPlayers - 1);
+	public override void OnServerConnect(NetworkConnection conn)
+	{
+		if(!isGameInProgress) { return; }
 
-                player.SetDisplayName($"{SteamFriends.GetFriendPersonaName(steamId)}");
+		conn.Disconnect();
+	}
 
-                int imageIndex = SteamFriends.GetLargeFriendAvatar(steamId);
+	public override void OnServerDisconnect(NetworkConnection conn)
+	{
+		try
+		{
+			if (conn.identity.gameObject.TryGetComponent(out FPSPlayer player))
+			{
+				player.ServerKillPlayer();
+				Players.Remove(player);
+				if(isGameInProgress)
+				{
+					gameManager.ServerHandlePlayerDisconnect(player);
+				}
+			}
 
-                if(imageIndex > -1)
-                {
-                    player.SetSteamId(steamId.m_SteamID);
-                }
-                else
-                {
-                    AvatarInfo info = new AvatarInfo();
-                    info.player = player;
-                    info.playerIndex = numPlayers - 1;
-                    info.SteamID = steamId;
+		}
+		catch (NullReferenceException)
+		{
+			Debug.LogWarning("Caught null reference on server disconnect");
+		}
 
-                    unloadedPlayerAvatars.Add(info);
-                }
-            }
+		base.OnServerDisconnect(conn);
+	}
 
-            if(Players.Count == 1)
-            {
-                player.SetPartyOwner(true);
-            }
+	[Server]
+	public void AssignTeams()
+	{
+		foreach (KeyValuePair<int, NetworkConnectionToClient> entry in NetworkServer.connections)
+		{
+			Debug.Log(entry.Key);
+		}
+	}
 
-            player.RpcUpdateInfo();
-        }
+	[Server]
+	public void ClearTeams()
+	{
+		teamOne.Clear();
+		teamTwo.Clear();
+	}
 
-        AssignPlayerToTeam(conn);
-    }
+	[Server]
+	public void AssignPlayerToTeam(NetworkConnection conn)
+	{
+		if (teamOne.Count > teamTwo.Count)
+		{
+			teamTwo.Add(conn.identity);
+			if (conn.identity.TryGetComponent(out FPSPlayer player))
+			{
+				player.ServerSetTeam(2);
+			}
+		}
+		else
+		{
+			teamOne.Add(conn.identity);
+			if (conn.identity.TryGetComponent(out FPSPlayer player))
+			{
+				player.ServerSetTeam(1);
+			}
+		}
+	}
 
-    public override void OnServerConnect(NetworkConnection conn)
-    {
-        if(!isGameInProgress) { return; }
+	[Server]
+	public void AssignPlayerToTeam(NetworkConnection conn, int team)
+	{
+		switch (team)
+		{
+			case 1:
+				teamOne.Add(conn.identity);
+				break;
+			case 2:
+				teamTwo.Add(conn.identity);
+				break;
+			default:
+				Debug.LogWarning("Player is not allowed to join a team other than 1 or 2");
+				break;
+		}
+	}
 
-        conn.Disconnect();
-    }
+	[Server]
+	public void RestartScene()
+	{
+		ServerChangeScene(lastLoadedScene);
+	}
 
-    public override void OnServerDisconnect(NetworkConnection conn)
-    {
-        try
-        {
-            if (conn.identity.gameObject.TryGetComponent<FPSPlayer>(out FPSPlayer player))
-            {
-                player.ServerKillPlayer();
-                Players.Remove(player);
-                if(isGameInProgress)
-                {
-                    gameManager.ServerHandlePlayerDisconnect(player);
-                }
-            }
+	[Server]
+	public SpawnTransform ServerGetSpawnLocation(int index, int team)
+	{
+		if(spawnManager == null)
+		{
+			return SpawnTransform.invalidSpawn;
+		}
+		return spawnManager.ServerGetSpawnLocation(index, team);
+	}
 
-        }
-        catch (NullReferenceException)
-        {
-            Debug.LogWarning("Caught null reference on server disconnect");
-        }
+	#endregion
 
-        base.OnServerDisconnect(conn);
-    }
+	#region Client
 
-    [Server]
-    public void AssignTeams()
-    {
-        foreach (KeyValuePair<int, NetworkConnectionToClient> entry in NetworkServer.connections)
-        {
-            Debug.Log(entry.Key);
-        }
-    }
+	public override void OnClientConnect(NetworkConnection conn)
+	{
+		base.OnClientConnect(conn);
 
-    [Server]
-    public void ClearTeams()
-    {
-        teamOne.Clear();
-        teamTwo.Clear();
-    }
+		ClientOnConnected?.Invoke();
+	}
 
-    [Server]
-    public void AssignPlayerToTeam(NetworkConnection conn)
-    {
-        if (teamOne.Count > teamTwo.Count)
-        {
-            teamTwo.Add(conn.identity);
-            if (conn.identity.TryGetComponent(out FPSPlayer player))
-            {
-                player.ServerSetTeam(2);
-            }
-        }
-        else
-        {
-            teamOne.Add(conn.identity);
-            if (conn.identity.TryGetComponent(out FPSPlayer player))
-            {
-                player.ServerSetTeam(1);
-            }
-        }
-    }
+	public override void OnClientDisconnect(NetworkConnection conn)
+	{
+		base.OnClientDisconnect(conn);
 
-    [Server]
-    public void AssignPlayerToTeam(NetworkConnection conn, int team)
-    {
-        switch (team)
-        {
-            case 1:
-                teamOne.Add(conn.identity);
-                break;
-            case 2:
-                teamTwo.Add(conn.identity);
-                break;
-            default:
-                Debug.LogWarning("Player is not allowed to join a team other than 1 or 2");
-                break;
-        }
-    }
+		ClientOnDisconnected?.Invoke();
+	}
 
-    [Server]
-    public void PlayerAvatarLoaded(AvatarImageLoaded_t callback)
-    {
-        for (int i = 0; i < unloadedPlayerAvatars.Count; i++)
-        {
-            AvatarInfo ai = unloadedPlayerAvatars[i];
+	public override void OnStopClient()
+	{
+		Players.Clear();
+		teamOne.Clear();
+		teamTwo.Clear();
 
-            ai.player.SetSteamId(ai.SteamID.m_SteamID);
-        }
-
-    }
-
-    [Server]
-    public void RestartScene()
-    {
-        ServerChangeScene(lastLoadedScene);
-    }
-
-    [Server]
-    public SpawnTransform ServerGetSpawnLocation(int index, int team)
-    {
-        if(spawnManager == null)
-        {
-            return SpawnTransform.invalidSpawn;
-        }
-        return spawnManager.ServerGetSpawnLocation(index, team);
-    }
-
-    #endregion
-
-    #region Client
-
-    public override void OnClientConnect(NetworkConnection conn)
-    {
-        base.OnClientConnect(conn);
-
-        ClientOnConnected?.Invoke();
-    }
-
-    public override void OnClientDisconnect(NetworkConnection conn)
-    {
-        base.OnClientDisconnect(conn);
-
-        ClientOnDisconnected?.Invoke();
-    }
-
-    public override void OnStopClient()
-    {
-        Players.Clear();
-        teamOne.Clear();
-        teamTwo.Clear();
-
-        SceneManager.LoadScene(0);
-    }
-    #endregion
+		SceneManager.LoadScene(0);
+	}
+	#endregion
 }

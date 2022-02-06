@@ -30,7 +30,7 @@ public class GamemodeManager : NetworkBehaviour
         {
             ServerHandlePlayerStartGame(player);
 
-            player.CanSpawnPlayer += () => deathmatch.GetRemainingTickets(player.PlayerTeam) > 0;
+            player.CanPlayerSpawn += () => deathmatch.GetRemainingTickets(player.PlayerTeam) > 0;
 
             if (player.PlayerTeam == 1)
             {

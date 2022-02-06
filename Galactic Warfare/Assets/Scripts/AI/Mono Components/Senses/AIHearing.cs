@@ -52,12 +52,12 @@ public class AIHearing : MonoBehaviour
 
     private void FixedUpdate()
     {
-        updateAudioEvents();
+        UpdateAudioEvents();
 
         unregisteredAudioPositions.Clear();
     }
 
-    private void updateAudioEvents()
+    private void UpdateAudioEvents()
     {
         Vector3 lastAudioPosition = Vector3.positiveInfinity;
 

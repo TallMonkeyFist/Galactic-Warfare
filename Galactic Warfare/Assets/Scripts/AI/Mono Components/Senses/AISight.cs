@@ -35,10 +35,10 @@ public class AISight : MonoBehaviour
 
     private void FixedUpdate()
     {
-        updateTrackedPlayers();
+        UpdateTrackedPlayers();
     }
 
-    private void updateTrackedPlayers()
+    private void UpdateTrackedPlayers()
     {
         for (int i = nearPlayers.Count - 1; i >= 0; i--)
         {

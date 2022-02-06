@@ -113,7 +113,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1656143958148282907
 Transform:
   m_ObjectHideFlags: 0
@@ -159,6 +159,8 @@ MonoBehaviour:
   fireVolume: 0.395
   audioSource: {fileID: 2122678228206324628}
   AlreadyShot: 0
+  m_MagazineAmmo: 0
+  m_ReserveAmmo: 0
 --- !u!82 &2122678228206324628
 AudioSource:
   m_ObjectHideFlags: 0

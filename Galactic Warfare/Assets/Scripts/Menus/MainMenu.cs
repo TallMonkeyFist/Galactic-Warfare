@@ -7,82 +7,79 @@ using UnityEngine;
 public class MainMenu : MonoBehaviour
 {
 
-    [Header("References")]
-    [Tooltip("Startup panel")]
-    [SerializeField] private GameObject landingPagePanel = null;
+	[Header("References")]
+	[Tooltip("Startup panel")]
+	[SerializeField] private GameObject landingPagePanel = null;
 
-    private bool useSteam = false;
+	public bool useSteam = false;
+	private FPSNetworkManager manager;
 
-    protected Callback<LobbyCreated_t> lobbyCreated;
-    protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
-    protected Callback<LobbyEnter_t> lobbyEntered;
+	protected Callback<LobbyCreated_t> lobbyCreated;
+	protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
+	protected Callback<LobbyEnter_t> lobbyEntered;
 
-    private void Start()
-    {
-        Cursor.lockState = CursorLockMode.None;
+	private void Start()
+	{
+		Cursor.lockState = CursorLockMode.None;
 
-        FPSNetworkManager manager = (FPSNetworkManager)NetworkManager.singleton;
-        useSteam = manager.useSteam;
+		manager = (FPSNetworkManager)NetworkManager.singleton;
+		useSteam = manager.useSteam;
 
-        if(!useSteam) { return; }
+		if(!useSteam) { return; }
 
-        lobbyCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
-        gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnGameLobbyJoinRequested);
-        lobbyEntered = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
-    }
+		lobbyCreated = Callback<LobbyCreated_t>.Create(OnSteamLobbyCreated);
+		gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnSteamGameLobbyJoinRequested);
+		lobbyEntered = Callback<LobbyEnter_t>.Create(OnSteamLobbyEntered);
+	}
 
-    public void HostLobby()
-    {
-        landingPagePanel.SetActive(false);
+	public void HostLobby()
+	{
+		landingPagePanel.SetActive(false);
 
-        if(useSteam)
-        {
-            SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, 32);
-            return;
-        }
+		if(useSteam)
+		{
+			SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, 16);
+			return;
+		}
 
-        NetworkManager.singleton.StartHost();
-    }
+		manager.StartHost();
+	}
 
-    private void OnLobbyCreated(LobbyCreated_t callback)
-    {
-        if (callback.m_eResult != EResult.k_EResultOK)
-        {
-            landingPagePanel.SetActive(true);
-            return;
-        }
+	private void OnSteamLobbyCreated(LobbyCreated_t callback)
+	{
+		if (callback.m_eResult != EResult.k_EResultOK)
+		{
+			landingPagePanel.SetActive(true);
+			return;
+		}
 
-        NetworkManager.singleton.StartHost();
+		manager.StartHost();
 
-        CSteamID lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
-        FPSNetworkManager.LobbyId = lobbyId.m_SteamID;
+		CSteamID lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+		FPSNetworkManager.LobbyId = lobbyId.m_SteamID;
 
-        SteamMatchmaking.SetLobbyData(
-            lobbyId,
-            "HostAddress",
-            SteamUser.GetSteamID().ToString());
-    }
+		SteamMatchmaking.SetLobbyData(
+			lobbyId,
+			"HostAddress",
+			SteamUser.GetSteamID().ToString());
+	}
 
-    private void OnGameLobbyJoinRequested(GameLobbyJoinRequested_t callback)
-    {
+	private void OnSteamGameLobbyJoinRequested(GameLobbyJoinRequested_t callback)
+	{
+		SteamMatchmaking.JoinLobby(callback.m_steamIDLobby);
+	}
 
-        SteamMatchmaking.JoinLobby(callback.m_steamIDLobby);
-    }
+	private void OnSteamLobbyEntered(LobbyEnter_t callback)
+	{
+		if(NetworkServer.active) { return; }
 
-    private void OnLobbyEntered(LobbyEnter_t callback)
-    {
-        if(NetworkServer.active) { return; }
+		CSteamID lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
+		FPSNetworkManager.LobbyId = lobbyId.m_SteamID;
 
-        CSteamID lobbyId = new CSteamID(callback.m_ulSteamIDLobby);
-        FPSNetworkManager.LobbyId = lobbyId.m_SteamID;
+		string hostAddress = SteamMatchmaking.GetLobbyData(lobbyId, "HostAddress");
+		manager.networkAddress = hostAddress;
+		manager.StartClient();
 
-        string hostAddress = SteamMatchmaking.GetLobbyData(
-            lobbyId,
-            "HostAddress");
-
-        NetworkManager.singleton.networkAddress = hostAddress;
-        NetworkManager.singleton.StartClient();
-
-        landingPagePanel.SetActive(false);
-    }
+		landingPagePanel.SetActive(false);
+	}
 }

@@ -30,7 +30,7 @@ public class LobbyMenu : MonoBehaviour
 
 	private int activeLevelIndex = 0;
 
-	private void Start()
+	private void OnEnable()
 	{
 		FPSNetworkManager.ClientOnConnected += HandleClientConnected;
 		FPSPlayer.AuthorityOnPartyOwnerStateUpdated += AuthorityHandlePartyOwnerStateUpdated;
@@ -56,15 +56,14 @@ public class LobbyMenu : MonoBehaviour
 		levelDisplayImage.gameObject.SetActive(state);
 	}
 
-	private void ClientHandleInfoUpdated()
+	private void ClientHandleInfoUpdated(List<FPSPlayer.PlayerDisplayInfo> players)
 	{
 		FPSNetworkManager manager = (FPSNetworkManager)NetworkManager.singleton;
-		List<FPSPlayer> players = manager.Players;
 
 		for(int i = 0; i < players.Count; i++)
 		{
-			playerNameTexts[i].text = players[i].DisplayName;
-			playerAvatarImages[i].texture = players[i].DisplayImage;
+			playerNameTexts[i].text = players[i].Name;
+			playerAvatarImages[i].texture = players[i].Avatar;
 		}
 
 		for(int i = players.Count; i < playerNameTexts.Length; i++)

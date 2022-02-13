@@ -113,7 +113,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1656143958148282907
 Transform:
   m_ObjectHideFlags: 0
@@ -155,7 +155,9 @@ MonoBehaviour:
   autoWeapon: 0
   bulletSpread: 10
   reloadTime: 2
-  fireSound: {fileID: 8300000, guid: ec5f97486680b3d4d8deaf9b4a66c0a4, type: 3}
+  fireSound: {fileID: 8300000, guid: c416771b553c0b94182dcbb0a987e834, type: 3}
+  reloadSound: {fileID: 8300000, guid: d7e0f645e1802aa42902550e0249e9a4, type: 3}
+  drawWeaponSound: {fileID: 8300000, guid: f2a2a5c8bdae9984ca7c611474602b47, type: 3}
   fireVolume: 0.395
   audioSource: {fileID: 2122678228206324628}
   AlreadyShot: 0
@@ -171,8 +173,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_audioClip: {fileID: 8300000, guid: c416771b553c0b94182dcbb0a987e834, type: 3}
+  m_PlayOnAwake: 0
   m_Volume: 0.5
   m_Pitch: 1
   Loop: 0

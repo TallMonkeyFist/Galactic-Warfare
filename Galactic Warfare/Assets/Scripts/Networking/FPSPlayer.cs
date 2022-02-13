@@ -1,6 +1,7 @@
 ﻿using Mirror;
 using Steamworks;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,6 +9,14 @@ using UnityEngine.UI;
 
 public class FPSPlayer : NetworkBehaviour
 {
+	public struct PlayerDisplayInfo
+	{
+		public string Name;
+		public Texture2D Avatar;
+		public int ID;
+		public ulong SteamID;
+	}
+
 	[Header("References")]
 	[Tooltip("FPS Player prefab to spawn")]
 	[SerializeField] private GameObject fpsPlayerPrefab = null;
@@ -25,7 +34,7 @@ public class FPSPlayer : NetworkBehaviour
 	[Tooltip("UI for a game in progress")]
 	[SerializeField] private UI_Game gameUI = null;
 
-	private NetworkManager nm;
+	private FPSNetworkManager nm;
 	private NetworkConnectionToClient client;
 	private int playerIndex;
 
@@ -36,16 +45,12 @@ public class FPSPlayer : NetworkBehaviour
 
 	[SyncVar(hook = nameof(SyncIsHost))]
 	private bool isHost = false;
-	[SyncVar(hook = nameof(ClientHandleDisplayNameUpdated))]
-	private string displayName;
-	[SyncVar(hook = nameof(ClientHandleSteamIDUpdated))]
-	public ulong m_SteamID;
 
 	protected Callback<AvatarImageLoaded_t> avatarImageLoaded;
 
 	private Texture2D displayImage;
 
-	public static event Action ClientOnInfoUpdated;
+	public static event Action<List<PlayerDisplayInfo>> ClientOnInfoUpdated;
 	public static event Action<bool> AuthorityOnPartyOwnerStateUpdated;
 
 	public event Action ServerOnDie;
@@ -53,17 +58,19 @@ public class FPSPlayer : NetworkBehaviour
 
 	public bool IsHost { get { return isHost; } }
 	public int PlayerTeam { get { return team; } }
-	public string DisplayName { get { return displayName; } }
+	//public string DisplayName { get { return displayName; } }
 	public Texture2D DisplayImage { get { return displayImage; } }
 	public UI_Game GameUI { get { return gameUI; } }
 
 	private int SpawnIndex = 0;
 
+	private List<PlayerDisplayInfo> playerDisplayInfo = new List<PlayerDisplayInfo>();
+
 	#region Server
 
 	public override void OnStartServer()
 	{
-		nm = NetworkManager.singleton;
+		nm = (FPSNetworkManager) NetworkManager.singleton;
 		playerIndex = nm.spawnPrefabs.IndexOf(fpsPlayerPrefab);
 
 		ServerOnSpawn += TargetDisableMouseCursor;
@@ -73,21 +80,28 @@ public class FPSPlayer : NetworkBehaviour
 		DontDestroyOnLoad(gameObject);
 
 		if(isHost)
-        {
+		{
 			avatarImageLoaded = Callback<AvatarImageLoaded_t>.Create(OnAvatarImageLoaded);
 		}
+	}
+
+	public override void OnStopServer()
+	{
+		playerDisplayInfo.Clear();
+
+		base.OnStopServer();
 	}
 
 	[Server]
 	public void SetDisplayName(string displayName)
 	{
-		this.displayName = displayName;
+		//this.displayName = displayName;
 	}
 
 	[Server]
 	public void SetSteamId(ulong id)
 	{
-		m_SteamID = id;
+		//m_SteamID = id;
 	}
 
 	[Server]
@@ -158,9 +172,9 @@ public class FPSPlayer : NetworkBehaviour
 
 	[Command]
 	public void CmdUpdatePlayerInfo()
-    {
+	{
 		RpcUpdateInfo();
-    }
+	}
 
 	[Server]
 	private void ServerHandleDie()
@@ -203,15 +217,9 @@ public class FPSPlayer : NetworkBehaviour
 
 	public override void OnStartClient()
 	{
-
-		if(isHost) { return; }
+		if (isHost) { return; }
 
 		DontDestroyOnLoad(gameObject);
-
-
-		((FPSNetworkManager)NetworkManager.singleton).Players.Add(this);
-
-		ClientOnInfoUpdated?.Invoke();
 
 		if (!hasAuthority) { return; }
 
@@ -221,9 +229,7 @@ public class FPSPlayer : NetworkBehaviour
 
 	public override void OnStopClient()
 	{
-		ClientOnInfoUpdated?.Invoke();
-
-		((FPSNetworkManager)NetworkManager.singleton).Players.Remove(this);
+		if(isHost) { return; }
 
 		if(!hasAuthority) { return; }
 	}
@@ -297,7 +303,16 @@ public class FPSPlayer : NetworkBehaviour
 	[Client]
 	private void ClientHandleDisplayNameUpdated(string oldName, string newName)
 	{
-		ClientOnInfoUpdated?.Invoke();
+		for(int i = 0; i < playerDisplayInfo.Count; i++)
+		{
+			if(playerDisplayInfo[i].ID == netIdentity.connectionToServer.connectionId)
+			{
+				PlayerDisplayInfo info = playerDisplayInfo[i];
+				info.Name = newName;
+				playerDisplayInfo[i] = info;
+				ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
+			}
+		}
 	}
 
 	[Client]
@@ -305,24 +320,28 @@ public class FPSPlayer : NetworkBehaviour
 	{
 		if (newId == ulong.MinValue)
 		{
-
 			displayImage = ((FPSNetworkManager)NetworkManager.singleton).defaultImage;
-
-			ClientOnInfoUpdated?.Invoke();
-
 			return;
 		}
 
 		CSteamID id = new CSteamID(newId);
 		Texture2D playerAvatar = GetSteamImageAsTexture(id);
 		displayImage = playerAvatar;
-		ClientOnInfoUpdated?.Invoke();
 	}
 
 	private void OnAvatarImageLoaded(AvatarImageLoaded_t callback)
 	{
-		displayImage = GetSteamImageAsTexture(callback.m_steamID);
-		ClientOnInfoUpdated?.Invoke();
+		Texture2D image = GetSteamImageAsTexture(callback.m_steamID);
+		for(int i = 0; i < playerDisplayInfo.Count; i++)
+		{
+			if(playerDisplayInfo[i].SteamID == callback.m_steamID.m_SteamID)
+			{
+				PlayerDisplayInfo info = playerDisplayInfo[i];
+				info.Avatar = image;
+				playerDisplayInfo[i] = info;
+			}
+		}
+		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
 	}
 
 	private Texture2D GetSteamImageAsTexture(CSteamID id)
@@ -358,13 +377,65 @@ public class FPSPlayer : NetworkBehaviour
 	[ClientRpc]
 	public void RpcUpdateInfo()
 	{
-		ClientOnInfoUpdated?.Invoke();
+		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
 	}
 
 	[TargetRpc]
 	private void TargetDisableMouseCursor()
 	{
 		Cursor.lockState = CursorLockMode.Locked;
+	}
+
+	[ClientRpc]
+	public void RemovePlayerInfo(int ID)
+	{
+		for (int i = playerDisplayInfo.Count - 1; i >= 0; i--)
+		{
+			if (playerDisplayInfo[i].ID == ID)
+			{
+				playerDisplayInfo.RemoveAt(i);
+				return;
+			}
+		}
+		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
+	}
+
+	[ClientRpc]
+	public void RpcAddPlayerInfo(string name, ulong steamID, bool steam, int id)
+	{
+		AddPlayerInfo(name, steamID, steam, id);
+	}
+
+	[TargetRpc]
+	public void TargetAddPlayerInfo(NetworkConnection conn, string name, ulong steamID, bool steam, int id)
+	{
+		AddPlayerInfo(name, steamID, steam, id);
+	}
+
+	[Client]
+	private void AddPlayerInfo(string name, ulong steamID, bool steam, int id)
+	{
+		PlayerDisplayInfo info;
+		info.Name = name;
+		info.ID = id;
+		info.SteamID = steamID;
+		if (!steam)
+		{
+			info.Avatar = ((FPSNetworkManager)NetworkManager.singleton).defaultImage;
+		}
+		else
+		{
+			info.Avatar = GetSteamImageAsTexture(new CSteamID(steamID));
+		}
+
+		playerDisplayInfo.Add(info);
+		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
+	}
+
+	[TargetRpc]
+	public void TargetDisconnectSteamUser(NetworkConnection conn, ulong lobbyId)
+	{
+		SteamMatchmaking.LeaveLobby(new CSteamID(lobbyId));
 	}
 
 	#endregion

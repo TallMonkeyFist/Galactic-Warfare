@@ -7,6 +7,14 @@ using UnityEngine.SceneManagement;
 
 public class FPSNetworkManager : NetworkManager
 {
+	public struct PlayerData
+	{
+		public string Name;
+		public ulong SteamID;
+		public bool UseSteam;
+		public int ID;
+	}
+
 	public Texture2D defaultImage;
 	public bool useSteam;
 
@@ -26,8 +34,9 @@ public class FPSNetworkManager : NetworkManager
 
 	private string lastLoadedScene;
 
+	private List<PlayerData> playerInfoData = new List<PlayerData>();
+
 	public static ulong LobbyId { get; set; }
-	public static CSteamID LobbyID { get; private set; }
 
 	public override void Start()
 	{
@@ -51,6 +60,7 @@ public class FPSNetworkManager : NetworkManager
 		Players.Clear();
 		teamOne.Clear();
 		teamTwo.Clear();
+		playerInfoData.Clear();
 
 		isGameInProgress = false;
 	}
@@ -88,50 +98,27 @@ public class FPSNetworkManager : NetworkManager
 	{
 		base.OnServerAddPlayer(conn);
 
-		if(conn.identity.TryGetComponent(out FPSPlayer player))
-		{
-			Players.Add(player);
+		ServerInitializePlayer(conn);
 
-			player.SetSteamId(ulong.MinValue);
-			player.SetDisplayName($"Player {Players.Count}");
-
-			if (SteamManager.Initialized && useSteam)
-			{
-				CSteamID steamId = SteamMatchmaking.GetLobbyMemberByIndex(new CSteamID(LobbyId), numPlayers - 1);
-				player.SetSteamId(steamId.m_SteamID);
-				player.SetDisplayName(SteamFriends.GetFriendPersonaName(steamId));
-			}
-
-			if(Players.Count == 1)
-			{
-				player.SetPartyOwner(true);
-			}
-
-			player.RpcUpdateInfo();
-		}
-
-		AssignPlayerToTeam(conn);
 	}
 
 	public override void OnServerConnect(NetworkConnection conn)
 	{
-		if(!isGameInProgress) { return; }
-
-		conn.Disconnect();
+		if(isGameInProgress) { conn.Disconnect(); return; }
 	}
 
 	public override void OnServerDisconnect(NetworkConnection conn)
 	{
+		if(!conn.identity.gameObject.TryGetComponent(out FPSPlayer player)) { return; }
+
 		try
 		{
-			if (conn.identity.gameObject.TryGetComponent(out FPSPlayer player))
+			player.ServerKillPlayer();
+			player.RemovePlayerInfo(conn.connectionId);
+			Players.Remove(player);
+			if(isGameInProgress)
 			{
-				player.ServerKillPlayer();
-				Players.Remove(player);
-				if(isGameInProgress)
-				{
-					gameManager.ServerHandlePlayerDisconnect(player);
-				}
+				gameManager.ServerHandlePlayerDisconnect(player);
 			}
 
 		}
@@ -162,21 +149,17 @@ public class FPSNetworkManager : NetworkManager
 	[Server]
 	public void AssignPlayerToTeam(NetworkConnection conn)
 	{
+		if (!conn.identity.TryGetComponent(out FPSPlayer player)) { return; }
+
 		if (teamOne.Count > teamTwo.Count)
 		{
 			teamTwo.Add(conn.identity);
-			if (conn.identity.TryGetComponent(out FPSPlayer player))
-			{
-				player.ServerSetTeam(2);
-			}
+			player.ServerSetTeam(2);
 		}
 		else
 		{
 			teamOne.Add(conn.identity);
-			if (conn.identity.TryGetComponent(out FPSPlayer player))
-			{
-				player.ServerSetTeam(1);
-			}
+			player.ServerSetTeam(1);
 		}
 	}
 
@@ -213,6 +196,64 @@ public class FPSNetworkManager : NetworkManager
 		return spawnManager.ServerGetSpawnLocation(index, team);
 	}
 
+	[Server]
+	private void ServerInitializePlayer(NetworkConnection conn)
+	{
+
+		// Invalid player prefab
+		if (!conn.identity.TryGetComponent(out FPSPlayer player)) { conn.Disconnect(); return; }
+
+		//Player already exist on the server
+		if (Players.Contains(player)) { return; }
+
+		Players.Add(player);
+		player.SetPartyOwner(Players.Count == 1);
+
+		PlayerData pd;
+		pd.ID = conn.connectionId;
+
+		if (!useSteam || !SteamManager.Initialized)
+		{
+			player.SetSteamId(ulong.MinValue);
+			player.SetDisplayName($"Player {Players.Count}");
+
+			pd.UseSteam = false;
+			pd.Name = $"Player {Players.Count}";
+			pd.SteamID = ulong.MinValue;
+		}
+		else
+		{
+			CSteamID steamId = SteamMatchmaking.GetLobbyMemberByIndex(new CSteamID(LobbyId), numPlayers - 1);
+			player.SetSteamId(steamId.m_SteamID);
+			player.SetDisplayName(SteamFriends.GetFriendPersonaName(steamId));
+
+			pd.UseSteam = true;
+			pd.Name = SteamFriends.GetFriendPersonaName(steamId);
+			pd.SteamID = steamId.m_SteamID;
+		}
+
+		ServerSyncPlayerList(conn, player);
+		ServerAddPlayerData(player, pd);
+		AssignPlayerToTeam(conn);
+	}
+
+	[Server]
+	private void ServerSyncPlayerList(NetworkConnection conn, FPSPlayer player)
+	{
+		for (int i = 0; i < playerInfoData.Count; i++)
+		{
+			PlayerData d = playerInfoData[i];
+			player.TargetAddPlayerInfo(conn, d.Name, d.SteamID, d.UseSteam, d.ID);
+		}
+	}
+
+	[Server]
+	private void ServerAddPlayerData(FPSPlayer player, PlayerData d)
+	{
+		playerInfoData.Add(d);
+		player.RpcAddPlayerInfo(d.Name, d.SteamID, d.UseSteam, d.ID);
+	}
+
 	#endregion
 
 	#region Client
@@ -239,5 +280,34 @@ public class FPSNetworkManager : NetworkManager
 
 		SceneManager.LoadScene(0);
 	}
+
 	#endregion
+
+	public void LeaveGame()
+	{
+
+		if (NetworkServer.active && NetworkClient.isConnected)
+		{
+			if(useSteam)
+			{
+				foreach (FPSPlayer player in Players)
+				{
+					player.TargetDisconnectSteamUser(player.connectionToServer, LobbyId);
+				}
+			}
+			StopHost();
+
+		}
+		else
+		{
+			if (useSteam)
+			{
+				SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
+			}
+			StopClient();
+			SceneManager.LoadScene(0);
+		}
+		LobbyId = ulong.MinValue;
+		Debug.LogError(LobbyId);
+	}
 }

@@ -7,22 +7,18 @@ using UnityEngine.SceneManagement;
 
 public class QuitGame : MonoBehaviour
 {
-    public static void Quit()
-    {
-        Application.Quit();
-    }
+	public static void Quit()
+	{
+#if UNITY_EDITOR
+		UnityEditor.EditorApplication.isPlaying = false;
+#else
+		Application.Quit();
+#endif
+		}
 
-    public static void MainMenu()
-    {
-        if (NetworkServer.active && NetworkClient.isConnected)
-        {
-            NetworkManager.singleton.StopHost();
-        }
-        else
-        {
-            NetworkManager.singleton.StopClient();
-
-            SceneManager.LoadScene(0);
-        }
-    }
+	public static void MainMenu()
+	{
+		FPSNetworkManager manager = NetworkManager.singleton as FPSNetworkManager;
+		manager.LeaveGame();
+	}
 }

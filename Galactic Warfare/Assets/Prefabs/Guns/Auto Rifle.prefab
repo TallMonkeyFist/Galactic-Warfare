@@ -415,7 +415,9 @@ MonoBehaviour:
   autoWeapon: 1
   bulletSpread: 10
   reloadTime: 1
-  fireSound: {fileID: 8300000, guid: 46a7e2c246fd24d42b60e6150fb31bff, type: 3}
+  fireSound: {fileID: 8300000, guid: c3ad0996a57d224438ccac3adc4d3868, type: 3}
+  reloadSound: {fileID: 8300000, guid: 56ee26e7db9a51742a4c3f9830e21089, type: 3}
+  drawWeaponSound: {fileID: 8300000, guid: e3660614f89d19a439299bc390bf6c46, type: 3}
   fireVolume: 0.5
   audioSource: {fileID: -3092428054914184111}
   AlreadyShot: 0
@@ -431,8 +433,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_audioClip: {fileID: 8300000, guid: c3ad0996a57d224438ccac3adc4d3868, type: 3}
+  m_PlayOnAwake: 0
   m_Volume: 0.5
   m_Pitch: 1
   Loop: 0

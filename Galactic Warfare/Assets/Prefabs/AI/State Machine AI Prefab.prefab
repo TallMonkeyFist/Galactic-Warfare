@@ -113,6 +113,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   audioDistance: 30
+  team: 0
 --- !u!1 &5694405984297913948
 GameObject:
   m_ObjectHideFlags: 0
@@ -300,7 +301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0
+  syncInterval: 0.022222223
   clientAuthority: 0
   localPositionSensitivity: 0.01
   localRotationSensitivity: 0.01
@@ -318,7 +319,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0
+  syncInterval: 0.022222223
   clientAuthority: 0
   localPositionSensitivity: 0.01
   localRotationSensitivity: 0.01
@@ -472,6 +473,7 @@ MonoBehaviour:
   syncInterval: 0.1
   loadoutManager: {fileID: 11400000, guid: d07d8487294e284498ce63498fc05dfe, type: 2}
   weaponSocket: {fileID: 5694405984297913949}
+  team: 0
 --- !u!114 &4519595714420296926
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -515,3 +517,4 @@ MonoBehaviour:
   accuracy: {x: 0, y: 0}
   fireAccuracy: 0
   patrolTime: 0
+  lastAudioPosition: {x: 0, y: 0, z: 0}

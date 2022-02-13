@@ -4,171 +4,197 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+public struct PlayerLookData
+{
+	public Vector3 Forward;
+	public Vector3 Up;
+}
+
 public class WeaponManager : MonoBehaviour
 {
-    [Header("References")]
-    [Tooltip("Position to spawn the projectiles at")]
-    [SerializeField] private Transform muzzleTransform = null;
-    [Tooltip("Player camera reference for shooting to the center of the screen")]
-    [SerializeField] private Camera playerCamera;
-    [Tooltip("Layer Mask for shooting to the center of the screen")]
-    [SerializeField] private LayerMask shootMask = new LayerMask();
 
-    [Header("UI")]
-    [Tooltip("Name of the weapon")]
-    [SerializeField] private string weaponName = "Default Weapon";
-    [Tooltip("Weapon icon in the UI")]
-    [SerializeField] private Image weaponIcon = null;
+	[Header("References")]
+	[Tooltip("Position to spawn the projectiles at")]
+	[SerializeField] private Transform muzzleTransform = null;
+	[Tooltip("Position for the players head")]
+	[SerializeField] private Transform headTransform = null;
+	[Tooltip("Layer Mask for shooting to the center of the screen")]
+	[SerializeField] private LayerMask shootMask = new LayerMask();
 
-    [Header("Ammo Settings")]
-    [Tooltip("Projectile to spawn on fire")]
-    [SerializeField] public GameObject projectilePrefab = null;
-    [Tooltip("Round per Magazine")]
-    [SerializeField] private int magazineCapacity = 10;
-    [Tooltip("Max Ammo Capacity")]
-    [SerializeField] private int maxAmmo = 60;
-    [Tooltip("Fire rate (bullets/second)")]
-    [SerializeField] private float fireRate = 0.5f;
-    [Tooltip("Automatic Weapon")]
-    [SerializeField] private bool autoWeapon = false;
-    [Tooltip("Max angle of the bullet spread")]
-    [SerializeField] private float bulletSpread = 2.0f;
+	[Header("UI")]
+	[Tooltip("Name of the weapon")]
+	[SerializeField] private string weaponName = "Default Weapon";
+	[Tooltip("Weapon icon in the UI")]
+	[SerializeField] private Image weaponIcon = null;
 
-    [Header("Reload")]
-    [Tooltip("Time it takes to reload")]
-    [SerializeField] private float reloadTime = 1.0f;
+	[Header("Ammo Settings")]
+	[Tooltip("Projectile to spawn on fire")]
+	[SerializeField] public GameObject projectilePrefab = null;
+	[Tooltip("Round per Magazine")]
+	[SerializeField] private int magazineCapacity = 10;
+	[Tooltip("Max Ammo Capacity")]
+	[SerializeField] private int maxAmmo = 60;
+	[Tooltip("Fire rate (bullets/second)")]
+	[SerializeField] private float fireRate = 0.5f;
+	[Tooltip("Automatic Weapon")]
+	[SerializeField] private bool autoWeapon = false;
+	[Tooltip("Max angle of the bullet spread")]
+	[SerializeField] private float bulletSpread = 2.0f;
 
-    [Header("Audio")]
-    [Tooltip("Sound to play on fire")]
-    [SerializeField] private AudioClip fireSound = null;
-    [Tooltip("Volume the fire sound will be played at")]
-    [Range(0, 1)]
-    [SerializeField] private float fireVolume = 1.0f;
-    [Tooltip("Audio source to play the sound to")]
-    [SerializeField] private AudioSource audioSource = null;
+	[Header("Reload")]
+	[Tooltip("Time it takes to reload")]
+	[SerializeField] private float reloadTime = 1.0f;
 
-    [HideInInspector] public bool AlreadyShot;
-    [HideInInspector] public AudioClip FireSound { get { return fireSound; } }
-    [HideInInspector]  public AudioSource AudioSource { get { return audioSource; } }
+	[Header("Audio")]
+	[Tooltip("Sound to play on fire")]
+	[SerializeField] private AudioClip fireSound = null;
+	[Tooltip("Sound to play on fire")]
+	[SerializeField] private AudioClip reloadSound = null;
+	[Tooltip("Sound to play on fire")]
+	[SerializeField] private AudioClip drawWeaponSound = null;
+	[Tooltip("Volume the fire sound will be played at")]
+	[Range(0, 1)]
+	[SerializeField] private float fireVolume = 1.0f;
+	[Tooltip("Audio source to play the sound to")]
+	[SerializeField] private AudioSource audioSource = null;
 
-    public Transform ShootTransform { get { return muzzleTransform; } }
+	[HideInInspector] public bool AlreadyShot;
+	[HideInInspector] public AudioClip FireSound { get { return fireSound; } }
+	[HideInInspector] public AudioClip ReloadSound { get { return reloadSound; } }
+	[HideInInspector] public AudioClip DrawWeaponsSound { get { return drawWeaponSound; } }
+	[HideInInspector]  public AudioSource AudioSource { get { return audioSource; } }
 
-    public int m_MagazineAmmo;
-    public int m_ReserveAmmo;
-    private float m_FireDelay;
-    private float m_LastFireTime;
-    private float radiansSpread;
+	public Transform ShootTransform { get { return muzzleTransform; } }
 
-    private bool reloading;
+	public int m_MagazineAmmo;
+	public int m_ReserveAmmo;
+	private float m_FireDelay;
+	private float m_LastFireTime;
+	private float radiansSpread;
 
-    private void Start()
-    {
-        reloading = false;
-        m_FireDelay = 1 / fireRate;
-        m_LastFireTime = 0;
-        m_ReserveAmmo = maxAmmo - magazineCapacity;
-        m_MagazineAmmo = magazineCapacity;
-        playerCamera = Camera.main;
-        radiansSpread = bulletSpread * Mathf.PI / 180.0f;
-    }
+	private bool reloading;
 
-    public void TryReload()
-    {
-        if(m_MagazineAmmo < magazineCapacity && m_ReserveAmmo > 0 && !reloading)
-        {
-            StartCoroutine(Reload());
-        }
-    }
+	private void Start()
+	{
+		reloading = false;
+		m_FireDelay = 1 / fireRate;
+		m_LastFireTime = 0;
+		m_ReserveAmmo = maxAmmo - magazineCapacity;
+		m_MagazineAmmo = magazineCapacity;
+		radiansSpread = bulletSpread * Mathf.PI / 180.0f;
+	}
 
-    private IEnumerator Reload()
-    {
-        reloading = true;
+	private void OnEnable()
+	{
+		reloading = false;
+	}
 
-        yield return new WaitForSeconds(reloadTime);
+	public bool TryReload()
+	{
+		if(m_MagazineAmmo < magazineCapacity && m_ReserveAmmo > 0 && !reloading)
+		{
+			StartCoroutine(Reload());
+			return true;
+		}
 
-        int ammoToAdd = magazineCapacity - m_MagazineAmmo;
-        ammoToAdd = Mathf.Min(ammoToAdd, m_ReserveAmmo);
+		return false;
+	}
 
-        m_MagazineAmmo += ammoToAdd;
-        m_ReserveAmmo -= ammoToAdd;
-        reloading = false;
-    }
+	private IEnumerator Reload()
+	{
+		reloading = true;
+		AudioSource.PlayOneShot(reloadSound);
 
-    public bool TryFire()
-    {
-        if(!autoWeapon && AlreadyShot || reloading)
-        {
-            return false;
-        }
-        if(m_MagazineAmmo >= 1 && Time.time > m_LastFireTime + (m_FireDelay))
-        {
-             return Fire();
-        }
-        else if(m_MagazineAmmo <= 0)
-        {
-            TryReload();
-        }
+		yield return new WaitForSeconds(reloadTime);
 
-        return false;
-    }
+		int ammoToAdd = magazineCapacity - m_MagazineAmmo;
+		ammoToAdd = Mathf.Min(ammoToAdd, m_ReserveAmmo);
 
-    private bool Fire()
-    {
-        AlreadyShot = true;
-        m_LastFireTime = Time.time;
-        m_MagazineAmmo--;
+		m_MagazineAmmo += ammoToAdd;
+		m_ReserveAmmo -= ammoToAdd;
+		reloading = false;
+	}
 
-        return true;
-    }
+	public bool TryFire()
+	{
+		if(!autoWeapon && AlreadyShot || reloading)
+		{
+			return false;
+		}
+		if(m_MagazineAmmo >= 1 && Time.time > m_LastFireTime + (m_FireDelay))
+		{
+			 return Fire();
+		}
+		else if(m_MagazineAmmo <= 0)
+		{
+			TryReload();
+		}
 
-    public Vector3 GetProjectileDirection()
-    {
-        Vector3 playerLookPos = playerCamera.transform.position + playerCamera.transform.forward * 1000.0f;
+		return false;
+	}
 
-        if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out RaycastHit hit, 1000.0f, shootMask))
-        {
-            playerLookPos = playerCamera.transform.position + playerCamera.transform.forward * hit.distance;
-        }
+	private bool Fire()
+	{
+		AlreadyShot = true;
+		m_LastFireTime = Time.time;
+		m_MagazineAmmo--;
 
-        Vector3 unclampedDirection = playerLookPos - muzzleTransform.position;
+		return true;
+	}
 
-        Vector3 clampedDirection = Vector3.RotateTowards(muzzleTransform.up, unclampedDirection, radiansSpread, 0);
+	public PlayerLookData GetProjectileDirection()
+	{
+		PlayerLookData data;
 
-        return clampedDirection;
-    }
+		Vector3 playerLookPos = headTransform.transform.position + headTransform.transform.forward * 1000.0f;
 
-    public void AddAmmo(int ammoAmount)
-    {
-        m_ReserveAmmo = Mathf.Max(m_ReserveAmmo + ammoAmount, 0, maxAmmo - magazineCapacity);
-    }
+		if (Physics.Raycast(headTransform.transform.position, headTransform.transform.forward, out RaycastHit hit, 1000.0f, shootMask))
+		{
+			playerLookPos = headTransform.transform.position + headTransform.transform.forward * hit.distance;
+		}
 
-    public void SetCamera(Camera camera)
-    {
-        playerCamera = camera;
-    }
+		Vector3 unclampedDirection = playerLookPos - muzzleTransform.position;
 
-    public int GetCurrentAmmo()
-    {
-        return m_MagazineAmmo;
-    }
+		Vector3 clampedDirection = Vector3.RotateTowards(muzzleTransform.up, unclampedDirection, radiansSpread, 0);
 
-    public int GetMaxAmmo()
-    {
-        return maxAmmo;
-    }
+		data.Up = headTransform.up;
+		data.Forward = clampedDirection;
 
-    public int GetMagazineCapacity()
-    {
-        return magazineCapacity;
-    }
+		return data;
+	}
 
-    public int GetReserveAmmo()
-    {
-        return m_ReserveAmmo;
-    }
+	public void AddAmmo(int ammoAmount)
+	{
+		m_ReserveAmmo = Mathf.Max(m_ReserveAmmo + ammoAmount, 0, maxAmmo - magazineCapacity);
+	}
 
-    public string GetName()
-    {
-        return weaponName;
-    }
+	public void SetHead(Transform head)
+	{
+		headTransform = head;
+	}
+
+	public int GetCurrentAmmo()
+	{
+		return m_MagazineAmmo;
+	}
+
+	public int GetMaxAmmo()
+	{
+		return maxAmmo;
+	}
+
+	public int GetMagazineCapacity()
+	{
+		return magazineCapacity;
+	}
+
+	public int GetReserveAmmo()
+	{
+		return m_ReserveAmmo;
+	}
+
+	public string GetName()
+	{
+		return weaponName;
+	}
 }

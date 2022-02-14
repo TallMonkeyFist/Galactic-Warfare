@@ -98,8 +98,13 @@ public class FPSNetworkManager : NetworkManager
 	{
 		base.OnServerAddPlayer(conn);
 
+		Debug.Log("FPSNetworkManager Player added");
+
 		ServerInitializePlayer(conn);
 
+		Debug.Log($"Team one size: {teamOne.Count}");
+		Debug.Log($"Team two size: {teamTwo.Count}");
+		Debug.Log($"Player size:   {Players.Count}");
 	}
 
 	public override void OnServerConnect(NetworkConnection conn)
@@ -114,12 +119,17 @@ public class FPSNetworkManager : NetworkManager
 		try
 		{
 			player.ServerKillPlayer();
-			player.RemovePlayerInfo(conn.connectionId);
+			if(useSteam)
+            {
+				player.TargetDisconnectSteamUser(conn, LobbyId);
+            }
 			Players.Remove(player);
 			if(isGameInProgress)
 			{
 				gameManager.ServerHandlePlayerDisconnect(player);
 			}
+
+			ServerHandlePlayerDisconnect(conn);
 
 		}
 		catch (NullReferenceException)
@@ -204,7 +214,7 @@ public class FPSNetworkManager : NetworkManager
 		if (!conn.identity.TryGetComponent(out FPSPlayer player)) { conn.Disconnect(); return; }
 
 		//Player already exist on the server
-		if (Players.Contains(player)) { return; }
+		if (Players.Contains(player)) { Players.Remove(player); }
 
 		Players.Add(player);
 		player.SetPartyOwner(Players.Count == 1);
@@ -232,27 +242,40 @@ public class FPSNetworkManager : NetworkManager
 			pd.SteamID = steamId.m_SteamID;
 		}
 
-		ServerSyncPlayerList(conn, player);
-		ServerAddPlayerData(player, pd);
+		ServerAddPlayerData(pd);
+		ServerSyncPlayerList();
 		AssignPlayerToTeam(conn);
 	}
 
 	[Server]
-	private void ServerSyncPlayerList(NetworkConnection conn, FPSPlayer player)
+	private void ServerSyncPlayerList()
 	{
-		for (int i = 0; i < playerInfoData.Count; i++)
+		foreach (FPSPlayer player in Players)
 		{
-			PlayerData d = playerInfoData[i];
-			player.TargetAddPlayerInfo(conn, d.Name, d.SteamID, d.UseSteam, d.ID);
+			NetworkConnection conn = player.connectionToClient;
+			player.TargetClearPlayerList(conn);
+			for (int i = 0; i < playerInfoData.Count; i++)
+			{
+				PlayerData d = playerInfoData[i];
+				player.TargetAddPlayerInfo(conn, d.Name, d.SteamID, d.UseSteam, d.ID);
+			}
 		}
 	}
 
 	[Server]
-	private void ServerAddPlayerData(FPSPlayer player, PlayerData d)
+	private void ServerAddPlayerData(PlayerData d)
 	{
 		playerInfoData.Add(d);
-		player.RpcAddPlayerInfo(d.Name, d.SteamID, d.UseSteam, d.ID);
 	}
+
+	[Server]
+	private void ServerHandlePlayerDisconnect(NetworkConnection conn)
+    {
+		foreach(FPSPlayer player in Players)
+        {
+			player.TargetRemovePlayerInfo(player.connectionToClient, conn.connectionId);
+        }
+    }
 
 	#endregion
 

@@ -87,8 +87,6 @@ public class FPSPlayer : NetworkBehaviour
 
 	public override void OnStopServer()
 	{
-		playerDisplayInfo.Clear();
-
 		base.OnStopServer();
 	}
 
@@ -386,15 +384,21 @@ public class FPSPlayer : NetworkBehaviour
 		Cursor.lockState = CursorLockMode.Locked;
 	}
 
-	[ClientRpc]
-	public void RemovePlayerInfo(int ID)
+	[TargetRpc]
+	public void TargetClearPlayerList(NetworkConnection conn)
+    {
+		playerDisplayInfo.Clear();
+    }
+
+	[TargetRpc]
+	public void TargetRemovePlayerInfo(NetworkConnection conn, int ID)
 	{
 		for (int i = playerDisplayInfo.Count - 1; i >= 0; i--)
 		{
 			if (playerDisplayInfo[i].ID == ID)
 			{
 				playerDisplayInfo.RemoveAt(i);
-				return;
+				break;
 			}
 		}
 		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
@@ -415,7 +419,7 @@ public class FPSPlayer : NetworkBehaviour
 	[Client]
 	private void AddPlayerInfo(string name, ulong steamID, bool steam, int id)
 	{
-		PlayerDisplayInfo info;
+		PlayerDisplayInfo info = new PlayerDisplayInfo();
 		info.Name = name;
 		info.ID = id;
 		info.SteamID = steamID;

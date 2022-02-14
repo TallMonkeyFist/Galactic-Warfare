@@ -60,6 +60,8 @@ public class LobbyMenu : MonoBehaviour
 	{
 		FPSNetworkManager manager = (FPSNetworkManager)NetworkManager.singleton;
 
+		Debug.Log(players.Count);
+
 		for(int i = 0; i < players.Count; i++)
 		{
 			playerNameTexts[i].text = players[i].Name;

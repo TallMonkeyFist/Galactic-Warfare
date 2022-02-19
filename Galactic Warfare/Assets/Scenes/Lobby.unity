@@ -2904,7 +2904,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &505619303
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2912,7 +2912,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 505619302}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef4bffeda13d7a748973ff9204401c07, type: 3}
   m_Name: 
@@ -5225,13 +5225,13 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 7001510814056570469, guid: 9eebc2356f402b844ad2b16bb7c0882c, type: 3}
+    - target: {fileID: 0}
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8631402566132574624, guid: 9eebc2356f402b844ad2b16bb7c0882c, type: 3}
       propertyPath: useSteam
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8631402566132574624, guid: 9eebc2356f402b844ad2b16bb7c0882c, type: 3}
       propertyPath: transport
@@ -5309,8 +5309,7 @@ PrefabInstance:
       propertyPath: m_Name
       value: NetworkManager
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7001510814056570469, guid: 9eebc2356f402b844ad2b16bb7c0882c, type: 3}
+    m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9eebc2356f402b844ad2b16bb7c0882c, type: 3}
 --- !u!1 &945168771 stripped
 GameObject:
@@ -5326,21 +5325,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 945168771}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c7424c1070fad4ba2a7a96b02fbeb4bb, type: 3}
+  m_Script: {fileID: 11500000, guid: ea368fb6f27ec2f40a40e20977992b9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  port: 7777
-  NoDelay: 1
-  SendTimeout: 5000
-  ReceiveTimeout: 30000
-  serverMaxMessageSize: 16384
-  serverMaxReceivesPerTick: 10000
-  serverSendQueueLimitPerConnection: 10000
-  serverReceiveQueueLimitPerConnection: 10000
-  clientMaxMessageSize: 16384
-  clientMaxReceivesPerTick: 1000
-  clientSendQueueLimit: 10000
-  clientReceiveQueueLimit: 10000
+  Channels: 0200000001000000
+  Timeout: 25
+  SteamAppID: 480
+  AllowSteamRelay: 1
+  SteamUserID: 0
 --- !u!1 &955859405
 GameObject:
   m_ObjectHideFlags: 0

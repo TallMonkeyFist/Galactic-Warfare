@@ -187,7 +187,7 @@ public class FPSPlayer : NetworkBehaviour
 	{
 		if(m_CurrentPlayer == null) { return; }
 
-		if(m_CurrentPlayer.TryGetComponent<Health>(out Health health))
+		if(m_CurrentPlayer.TryGetComponent(out Health health))
 		{
 			health.Kill();
 		}
@@ -248,7 +248,7 @@ public class FPSPlayer : NetworkBehaviour
 	[TargetRpc]
 	public void TargetSetPlayerAlive(NetworkConnection target, bool isAlive)
 	{
-		this.m_IsAlive = isAlive;
+		m_IsAlive = isAlive;
 
 		if (!this.m_IsAlive)
 		{

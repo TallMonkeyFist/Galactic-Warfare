@@ -142,23 +142,28 @@ public class WeaponManager : MonoBehaviour
 		return true;
 	}
 
-	public PlayerLookData GetProjectileDirection()
+	public PlayerLookData GetProjectileDirection(Collider collider)
 	{
+		collider.enabled = false;
 		PlayerLookData data;
 
 		Vector3 playerLookPos = headTransform.transform.position + headTransform.transform.forward * 1000.0f;
+
+
 
 		if (Physics.Raycast(headTransform.transform.position, headTransform.transform.forward, out RaycastHit hit, 1000.0f, shootMask))
 		{
 			playerLookPos = headTransform.transform.position + headTransform.transform.forward * hit.distance;
 		}
 
-		Vector3 unclampedDirection = playerLookPos - muzzleTransform.position;
+		Vector3 unclampedDirection = (playerLookPos - muzzleTransform.position).normalized;
+
 
 		Vector3 clampedDirection = Vector3.RotateTowards(muzzleTransform.up, unclampedDirection, radiansSpread, 0);
 
 		data.Up = headTransform.up;
 		data.Forward = clampedDirection;
+		collider.enabled = true;
 
 		return data;
 	}

@@ -35,6 +35,10 @@ public class FPSNetworkManager : NetworkManager
 	private string lastLoadedScene;
 
 	private List<PlayerData> playerInfoData = new List<PlayerData>();
+	[Tooltip("Team One Layer")]
+	public LayerMask TeamOneLayer;
+	[Tooltip("Team Two Layer")]
+	public LayerMask TeamTwoLayer;
 
 	public static ulong LobbyId { get; set; }
 
@@ -61,7 +65,11 @@ public class FPSNetworkManager : NetworkManager
 		teamOne.Clear();
 		teamTwo.Clear();
 		playerInfoData.Clear();
-
+		if(useSteam)
+        {
+			SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
+			LobbyId = ulong.MinValue;
+		}
 		isGameInProgress = false;
 	}
 
@@ -113,10 +121,6 @@ public class FPSNetworkManager : NetworkManager
 		try
 		{
 			player.ServerKillPlayer();
-			if(useSteam)
-            {
-				player.TargetDisconnectSteamUser(conn, LobbyId);
-            }
 			Players.Remove(player);
 			if(isGameInProgress)
 			{
@@ -314,9 +318,9 @@ public class FPSNetworkManager : NetworkManager
 
 	public override void OnClientDisconnect(NetworkConnection conn)
 	{
-		base.OnClientDisconnect(conn);
-
 		ClientOnDisconnected?.Invoke();
+
+		base.OnClientDisconnect(conn);
 	}
 
 	public override void OnStopClient()
@@ -324,7 +328,11 @@ public class FPSNetworkManager : NetworkManager
 		Players.Clear();
 		teamOne.Clear();
 		teamTwo.Clear();
-
+		if (useSteam)
+		{
+			SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
+			LobbyId = ulong.MinValue;
+		}
 		SceneManager.LoadScene(0);
 	}
 
@@ -335,24 +343,11 @@ public class FPSNetworkManager : NetworkManager
 
 		if (NetworkServer.active && NetworkClient.isConnected)
 		{
-			if(useSteam)
-			{
-				foreach (FPSPlayer player in Players)
-				{
-					player.TargetDisconnectSteamUser(player.connectionToServer, LobbyId);
-				}
-			}
 			StopHost();
-
 		}
 		else
 		{
-			if (useSteam)
-			{
-				SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
-			}
 			StopClient();
-			SceneManager.LoadScene(0);
 		}
 		LobbyId = ulong.MinValue;
 	}

@@ -127,6 +127,7 @@ MonoBehaviour:
   headSocket: {fileID: 149386419351081677}
   playerCamera: {fileID: 0}
   equipmentProfile: {fileID: 11400000, guid: 19f27b7a82325aa4fbe0da9062caaa40, type: 2}
+  playerHitCollider: {fileID: 149386419115532902}
   primaryWeapon: {fileID: 7472800202805855616, guid: e9853241c4896364890541f289942fed, type: 3}
   secondaryWeapon: {fileID: 1656143958148282906, guid: 86b0915ac970fe242ac881805467787c, type: 3}
   primaryItem: {fileID: 682459674456743347, guid: a2f13ed813c96564e84039001c85259e, type: 3}

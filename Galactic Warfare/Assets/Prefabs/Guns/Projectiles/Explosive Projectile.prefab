@@ -134,15 +134,15 @@ MonoBehaviour:
   rb: {fileID: 6178490418722228226}
   speed: 150
   lifeSpan: 5
-  projetileDamage: 50
+  projetileDamage: 10
   shootMask:
     serializedVersion: 2
     m_Bits: 513
   isExplosive: 1
   explosionPrefab: {fileID: 159918, guid: a0040bf7072bc2f4e82d887d50a9c5e2, type: 3}
-  outerFalloffRange: 10
-  innerFalloffRange: 4
-  maxDamage: 100
+  outerFalloffRange: 4
+  innerFalloffRange: 1
+  maxDamage: 30
   minDamage: 10
   team: -1
   spawnedFromPlayer: 0

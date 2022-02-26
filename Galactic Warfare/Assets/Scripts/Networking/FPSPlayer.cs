@@ -2,10 +2,7 @@
 using Steamworks;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class FPSPlayer : NetworkBehaviour
 {
@@ -358,6 +355,22 @@ public class FPSPlayer : NetworkBehaviour
 			if (SteamUtils.GetImageRGBA(iImage, image, (int)(width * height * 4)))
 			{
 				Texture2D texture = new Texture2D((int)width, (int)height, TextureFormat.RGBA32, false, true);
+				byte r, g, b, a;
+				for(int i = 0; i < image.Length / 2; i+=4)
+				{
+					r = image[i];
+					g = image[i + 1];
+					b = image[i + 2];
+					a = image[i + 3];
+					image[i] = image[image.Length - i - 4];
+					image[i + 1] = image[image.Length - i - 3];
+					image[i + 2] = image[image.Length - i - 2];
+					image[i + 3] = image[image.Length - i - 1];
+					image[image.Length - i - 4] = r;
+					image[image.Length - i - 3] = g;
+					image[image.Length - i - 2] = b;
+					image[image.Length - i - 1] = a;
+				}
 				texture.LoadRawTextureData(image);
 				texture.Apply();
 				return texture;
@@ -386,9 +399,9 @@ public class FPSPlayer : NetworkBehaviour
 
 	[TargetRpc]
 	public void TargetClearPlayerList(NetworkConnection conn)
-    {
+	{
 		playerDisplayInfo.Clear();
-    }
+	}
 
 	[TargetRpc]
 	public void TargetRemovePlayerInfo(NetworkConnection conn, int ID)
@@ -435,12 +448,5 @@ public class FPSPlayer : NetworkBehaviour
 		playerDisplayInfo.Add(info);
 		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
 	}
-
-	[TargetRpc]
-	public void TargetDisconnectSteamUser(NetworkConnection conn, ulong lobbyId)
-	{
-		SteamMatchmaking.LeaveLobby(new CSteamID(lobbyId));
-	}
-
 	#endregion
 }

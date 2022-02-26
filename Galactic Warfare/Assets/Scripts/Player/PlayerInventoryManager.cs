@@ -17,6 +17,8 @@ public class PlayerInventoryManager : NetworkBehaviour
 	[SerializeField] private Camera playerCamera = null;
 	[Tooltip("Spawnable equipment for the player")]
 	[SerializeField] private EquipmentProfiles equipmentProfile = null;
+	[Tooltip("Collider to disable when shooting")]
+	[SerializeField] private Collider playerHitCollider = null;
 
 	[Header("Weapons")]
 	[Tooltip("Primary Weapon")]
@@ -299,7 +301,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 		}
 	}
 
-	[ServerCallback]
+	[Server]
 	private void ServerUpdatePlayerUI()
 	{
 		bool changed = false;
@@ -434,7 +436,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 		weapon.AudioSource.PlayOneShot(weapon.FireSound);
 	}
 
-	[ClientCallback]
+	[Client]
 	private void ClientUpdate()
 	{
 		if (!hasAuthority || !InputEnabled)
@@ -451,7 +453,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 			CmdSwapItems();
 		}
 
-		CmdWeaponUpdate(Input.GetKeyDown(KeyCode.R), Input.GetKey(KeyCode.Mouse0), Input.GetKeyUp(KeyCode.Mouse0), GetCurrentWeapon().GetProjectileDirection());
+		CmdWeaponUpdate(Input.GetKeyDown(KeyCode.R), Input.GetKey(KeyCode.Mouse0), Input.GetKeyUp(KeyCode.Mouse0), GetCurrentWeapon().GetProjectileDirection(playerHitCollider));
 		CmdItemUpdate(Input.GetKeyDown(KeyCode.E));
 	}
 
@@ -560,9 +562,19 @@ public class PlayerInventoryManager : NetworkBehaviour
 	#endregion
 
 
+	private void FixedUpdate()
+	{
+		if(isServer)
+		{
+			ServerUpdatePlayerUI();
+		}
+	}
+
 	private void Update()
 	{
-		ServerUpdatePlayerUI();
-		ClientUpdate();
+		if(isClient)
+		{
+			ClientUpdate();
+		}
 	}
 }

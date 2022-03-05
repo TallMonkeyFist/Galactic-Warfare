@@ -16,6 +16,8 @@ public class WeaponManager : MonoBehaviour
 	[Header("References")]
 	[Tooltip("Position to spawn the projectiles at")]
 	[SerializeField] private Transform muzzleTransform = null;
+	[Tooltip("Position of the back of the weapon")]
+	[SerializeField] private Transform shoulderTransform = null;
 	[Tooltip("Position for the players head")]
 	[SerializeField] private Transform headTransform = null;
 	[Tooltip("Layer Mask for shooting to the center of the screen")]
@@ -74,6 +76,16 @@ public class WeaponManager : MonoBehaviour
 
 	private bool reloading;
 
+	private Collider[] colliders;
+	public Collider[] Colliders {get 
+		{ 
+			if(colliders == null)
+			{
+				InitColliders();
+			}
+			return colliders;
+		} }
+
 	private void Start()
 	{
 		reloading = false;
@@ -82,6 +94,25 @@ public class WeaponManager : MonoBehaviour
 		m_ReserveAmmo = maxAmmo - magazineCapacity;
 		m_MagazineAmmo = magazineCapacity;
 		radiansSpread = bulletSpread * Mathf.PI / 180.0f;
+		InitColliders();
+	}
+
+	private void InitColliders()
+	{
+		Collider[] myColliders = GetComponents<Collider>();
+		Collider[] childColliders = GetComponents<Collider>();
+		colliders = new Collider[myColliders.Length + childColliders.Length];
+		int index = 0;
+		foreach(Collider col in myColliders)
+		{
+			Colliders[index++] = col;
+			index++;
+		}
+		foreach(Collider col in childColliders)
+		{
+			Colliders[index++] = col;
+			index++;
+		}
 	}
 
 	private void OnEnable()
@@ -93,6 +124,7 @@ public class WeaponManager : MonoBehaviour
 	{
 		if(m_MagazineAmmo < magazineCapacity && m_ReserveAmmo > 0 && !reloading)
 		{
+			reloading = true;
 			StartCoroutine(Reload());
 			return true;
 		}
@@ -102,7 +134,6 @@ public class WeaponManager : MonoBehaviour
 
 	private IEnumerator Reload()
 	{
-		reloading = true;
 		AudioSource.PlayOneShot(reloadSound);
 
 		yield return new WaitForSeconds(reloadTime);
@@ -115,9 +146,13 @@ public class WeaponManager : MonoBehaviour
 		reloading = false;
 	}
 
-	public bool TryFire()
+	public bool TryFire(Collider[] colliders)
 	{
 		if(!autoWeapon && AlreadyShot || reloading)
+		{
+			return false;
+		}
+		if(!IsValidShot(colliders))
 		{
 			return false;
 		}
@@ -133,6 +168,33 @@ public class WeaponManager : MonoBehaviour
 		return false;
 	}
 
+	private bool IsValidShot(Collider[] colliders)
+	{
+		bool valid = true;
+		foreach (Collider col in colliders)
+		{
+			col.enabled = false;
+		}
+
+		// Make sure that the weapon is not clipping through wall and on same side of wall as player head
+		Vector3 dir = muzzleTransform.position - shoulderTransform.position;
+		if (Physics.Raycast(shoulderTransform.position, dir, out RaycastHit hit, dir.magnitude, shootMask))
+		{
+			valid = false;
+		}
+		dir = muzzleTransform.position - headTransform.position;
+		if (Physics.Raycast(headTransform.position, dir, out hit, dir.magnitude, shootMask))
+		{
+			valid = false;
+		}
+
+		foreach (Collider col in colliders)
+		{
+			col.enabled = true;
+		}
+		return valid;
+	}
+
 	private bool Fire()
 	{
 		AlreadyShot = true;
@@ -142,14 +204,15 @@ public class WeaponManager : MonoBehaviour
 		return true;
 	}
 
-	public PlayerLookData GetProjectileDirection(Collider collider)
+	public PlayerLookData GetProjectileDirection(Collider[] colliders)
 	{
-		collider.enabled = false;
+		foreach(Collider col in colliders)
+		{
+			col.enabled = false;
+		}
 		PlayerLookData data;
 
 		Vector3 playerLookPos = headTransform.transform.position + headTransform.transform.forward * 1000.0f;
-
-
 
 		if (Physics.Raycast(headTransform.transform.position, headTransform.transform.forward, out RaycastHit hit, 1000.0f, shootMask))
 		{
@@ -163,7 +226,11 @@ public class WeaponManager : MonoBehaviour
 
 		data.Up = headTransform.up;
 		data.Forward = clampedDirection;
-		collider.enabled = true;
+
+		foreach (Collider col in colliders)
+		{
+			col.enabled = true;
+		}
 
 		return data;
 	}

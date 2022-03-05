@@ -49,6 +49,8 @@ public class FPSPlayer : NetworkBehaviour
 
 	public static event Action<List<PlayerDisplayInfo>> ClientOnInfoUpdated;
 	public static event Action<bool> AuthorityOnPartyOwnerStateUpdated;
+	public static event Action ClientOnWinGame;
+	public static event Action ClientOnLoseGame;
 
 	public event Action ServerOnDie;
 	public event Action ServerOnSpawn;
@@ -62,6 +64,8 @@ public class FPSPlayer : NetworkBehaviour
 	private int SpawnIndex = 0;
 
 	private List<PlayerDisplayInfo> playerDisplayInfo = new List<PlayerDisplayInfo>();
+
+	private ulong m_SteamID;
 
 	#region Server
 
@@ -96,7 +100,7 @@ public class FPSPlayer : NetworkBehaviour
 	[Server]
 	public void SetSteamId(ulong id)
 	{
-		//m_SteamID = id;
+		m_SteamID = id;
 	}
 
 	[Server]
@@ -447,6 +451,15 @@ public class FPSPlayer : NetworkBehaviour
 
 		playerDisplayInfo.Add(info);
 		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
+	}
+
+	[TargetRpc]
+	public void TargetUnlockAchievement(AchievementName achievement)
+	{
+		if(SteamManager.Initialized)
+		{
+			SteamUserStats.SetAchievement(achievement.ToString());
+		}
 	}
 	#endregion
 }

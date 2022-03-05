@@ -526,8 +526,6 @@ public class PlayerMovement : NetworkBehaviour
 			}
 			else if(moveCommands.Count == 0)
 			{
-				Debug.Log($"Conflict with a size difference of {(controller.transform.position - _newState.position).magnitude}"); 
-				
 				controller.enabled = false;
 				controller.transform.position = _newState.position;
 				controller.enabled = true;
@@ -548,8 +546,6 @@ public class PlayerMovement : NetworkBehaviour
 					}
 					else
 					{
-						Debug.Log($"Conflict with a size difference of {(moveCommand.position - _newState.position).magnitude}");
-
 						controller.enabled = false;
 						controller.transform.position = _newState.position;
 						controller.enabled = true;
@@ -561,8 +557,6 @@ public class PlayerMovement : NetworkBehaviour
 				}
 			}
 
-			Debug.Log($"Conflict with a size difference of {(_newState.position - moveCommands[moveCommands.Count - 1].position).magnitude}\nThis should not happen");
-
 			moveCommands.Clear();
 
 			controller.enabled = false;
@@ -570,57 +564,6 @@ public class PlayerMovement : NetworkBehaviour
 			controller.enabled = true;
 		}
 	}
-
-	/*[Client]
-	private void SyncServerMove()
-	{
-		PlayerMoveState _newState = ServerLastMove;
-
-		//Prevents host from running this because they are a server and client
-		if (isServer) { return; }
-
-		if (hasAuthority)
-		{
-			if (moveCommands.Count == 0 && (controller.transform.position - _newState.position).sqrMagnitude < 0.0001f)
-			{
-				return;
-			}
-			for (int i = 0; i < moveCommands.Count; i++)
-			{
-				MoveCommand moveCommand = moveCommands[i];
-				if ((_newState.position - moveCommand.position).sqrMagnitude < 0.0001f)
-				{
-
-					for (int j = i + 1; j < moveCommands.Count; j++)
-					{
-						MoveCommand toCheck = moveCommands[j];
-						if ((_newState.position - toCheck.position).sqrMagnitude < 0.0001f)
-						{
-							i++;
-						}
-						else
-						{
-							break;
-						}
-					}
-
-					moveCommands.RemoveRange(0, i + 1);
-
-					return;
-				}
-			}
-
-			//Server and client are not synced, reset the client position
-			Debug.Log($"Conflict with a size difference of {(_newState.position - moveCommands[moveCommands.Count - 1].position).magnitude}");
-
-			moveCommands.Clear();
-
-			controller.enabled = false;
-			controller.transform.position = _newState.position;
-			controller.enabled = true;
-			return;
-		}
-	}*/
 
 	[Client]
 	private void SyncServerLastMove(PlayerMoveState _oldState, PlayerMoveState _newState)

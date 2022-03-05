@@ -11144,6 +11144,18 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 719781407}
     m_Modifications:
+    - target: {fileID: 172006097572999167, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 172006097572999167, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 172006097572999167, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 90
+      objectReference: {fileID: 0}
     - target: {fileID: 1010986560893978973, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: m_Name
       value: Pillar Spawn

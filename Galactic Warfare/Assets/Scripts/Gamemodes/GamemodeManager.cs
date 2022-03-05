@@ -12,7 +12,6 @@ public class GamemodeManager : NetworkBehaviour
 	public bool GameRunning { get; private set; }
 
 	public static GamemodeManager singleton { get; private set; } = null;
-	public static bool initialized { get; private set; } = false;
 	public static event Action ServerOnManagerInitialized;
 
 	[Server]
@@ -20,6 +19,7 @@ public class GamemodeManager : NetworkBehaviour
 	{
 		UI_Game.RestartGame += Restart;
 
+		deathmatch = Deathmatch.singleton;
 		if(deathmatch == null)
 		{
 			deathmatch = gameObject.AddComponent<Deathmatch>();
@@ -50,7 +50,7 @@ public class GamemodeManager : NetworkBehaviour
 
 		deathmatch.ServerOnGameOver += EndDeathmatch;
 
-		deathmatch.StartGame(150, 150);
+		deathmatch.StartGame(50, 50);
 
 		ServerHandleGameStart();
 	}
@@ -58,7 +58,7 @@ public class GamemodeManager : NetworkBehaviour
 	[Server]
 	public void EndDeathmatch(int winningTeam)
 	{
-		ServerHandleGameEnd();
+		ServerHandleGameEnd(winningTeam);
 		FPSNetworkManager networkManager = (FPSNetworkManager)NetworkManager.singleton;
 		foreach (FPSPlayer player in networkManager.Players)
 		{
@@ -149,14 +149,34 @@ public class GamemodeManager : NetworkBehaviour
 	[Server]
 	private void ServerHandleGameStart()
 	{
-		initialized = true;
 		singleton = this;
 		ServerOnManagerInitialized?.Invoke();
 	}
 
 	[Server]
-	private void ServerHandleGameEnd()
+	private void ServerHandleGameEnd(int winningTeam)
 	{
-		initialized = false;
+		CheckGamemodeAchievmentProgress(winningTeam);
+		deathmatch.ServerOnGameOver -= EndDeathmatch;
+	}
+
+	[Server]
+	private void CheckGamemodeAchievmentProgress(int winningTeam)
+	{
+		FPSNetworkManager manager = NetworkManager.singleton as FPSNetworkManager;
+		if(!manager.useSteam) { return; }
+		List<FPSPlayer> players = manager.Players;
+		for(int i = 0; i < players.Count; i++)
+		{
+			FPSPlayer player = players[i];
+			if(player.PlayerTeam == winningTeam)
+			{
+				player.TargetUnlockAchievement(AchievementName.WIN_1_GAME);
+			}
+			else
+			{
+				player.TargetUnlockAchievement(AchievementName.LOSE_1_GAME);
+			}
+		}
 	}
 }

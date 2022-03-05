@@ -36,6 +36,8 @@ public class PlayerInventoryManager : NetworkBehaviour
 	[Tooltip("Specialization for the unit")]
 	[SerializeField] private Specialization specialization = null;
 
+	public static event Action OnWeaponSwap;
+
 	[SyncVar(hook =nameof(SyncPrimaryWeaponActive))]
 	public bool primaryWeaponActive;
 	[SyncVar(hook = nameof(SyncPrimaryItemActive))]
@@ -57,6 +59,8 @@ public class PlayerInventoryManager : NetworkBehaviour
 	private WeaponSnapshot weaponTwo;
 	private ItemSnapshot itemOne;
 	private ItemSnapshot itemTwo;
+
+	private Collider[] collidersToDisable = null;
 
 	#region Structs
 
@@ -91,7 +95,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 	[Command]
 	private void CmdWeaponUpdate(bool reload, bool fireDown, bool fireUp, PlayerLookData data)
 	{
-		WeaponManager weapon = primaryWeaponActive ? primaryWeapon : secondaryWeapon;
+		WeaponManager weapon = GetCurrentWeapon();
 		if (reload)
 		{
 			if(weapon.TryReload())
@@ -101,7 +105,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 		}
 		else if (fireDown)
 		{
-			if (weapon.TryFire())
+			if (weapon.TryFire(collidersToDisable))
 			{
 				if (nm == null)
 				{
@@ -160,6 +164,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 	private void CmdSwapWeapons()
 	{
 		primaryWeaponActive = !primaryWeaponActive;
+		OnWeaponSwap?.Invoke();
 		TargetPlaySwapWeaponsVfx();
 	}
 
@@ -205,6 +210,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 
 	public override void OnStartServer()
 	{
+		base.OnStartServer();
 		nm = NetworkManager.singleton;
 
 		Health playerHealth = GetComponent<Health>();
@@ -214,6 +220,15 @@ public class PlayerInventoryManager : NetworkBehaviour
 		m_SpawnedObjects = new List<GameObject>();
 		primaryWeaponActive = true;
 		primaryItemActive = true;
+
+		OnWeaponSwap += SetupColliderArray;
+		SetupColliderArray();
+	}
+
+	public override void OnStopServer()
+	{
+		OnWeaponSwap -= SetupColliderArray;
+		base.OnStopServer();
 	}
 
 	[Server]
@@ -359,6 +374,19 @@ public class PlayerInventoryManager : NetworkBehaviour
 		m_LastSpawn = null;
 		playerCamera = Camera.main;
 		InputEnabled = true;
+
+		if(isServer) { return; }
+
+		OnWeaponSwap += SetupColliderArray;
+		SetupColliderArray();
+	}
+
+	public override void OnStopClient()
+	{
+		if (isServer) { return; }
+
+		OnWeaponSwap -= SetupColliderArray;
+		base.OnStopClient();
 	}
 
 	private void SpawnEquipment()
@@ -453,7 +481,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 			CmdSwapItems();
 		}
 
-		CmdWeaponUpdate(Input.GetKeyDown(KeyCode.R), Input.GetKey(KeyCode.Mouse0), Input.GetKeyUp(KeyCode.Mouse0), GetCurrentWeapon().GetProjectileDirection(playerHitCollider));
+		CmdWeaponUpdate(Input.GetKeyDown(KeyCode.R), Input.GetKey(KeyCode.Mouse0), Input.GetKeyUp(KeyCode.Mouse0), GetCurrentWeapon().GetProjectileDirection(collidersToDisable));
 		CmdItemUpdate(Input.GetKeyDown(KeyCode.E));
 	}
 
@@ -489,6 +517,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 			secondaryWeapon.gameObject.SetActive(true);
 			primaryWeapon.gameObject.SetActive(false);
 		}
+		OnWeaponSwap?.Invoke();
 	}
 
 	private void SyncPrimaryItemActive(bool oldValue, bool newValue)
@@ -562,6 +591,18 @@ public class PlayerInventoryManager : NetworkBehaviour
 	#endregion
 
 
+	private void SetupColliderArray()
+	{
+		GetCurrentWeapon().SetHead(headSocket);
+		List<Collider> colliders = new List<Collider>();
+		colliders.Add(playerHitCollider);
+		foreach(Collider col in GetCurrentWeapon().Colliders)
+		{
+			colliders.Add(col);
+		}
+		collidersToDisable = colliders.ToArray();
+	}
+
 	private void FixedUpdate()
 	{
 		if(isServer)
@@ -576,5 +617,10 @@ public class PlayerInventoryManager : NetworkBehaviour
 		{
 			ClientUpdate();
 		}
+	}
+
+	private void Start()
+	{
+		SetupColliderArray();
 	}
 }

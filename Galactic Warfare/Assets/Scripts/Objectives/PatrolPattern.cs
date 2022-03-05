@@ -5,5 +5,5 @@ using UnityEngine;
 [System.Serializable]
 public class PatrolPattern
 {
-    public List<Transform> patrolPoints = new List<Transform>();
+	public List<Transform> patrolPoints = new List<Transform>();
 }

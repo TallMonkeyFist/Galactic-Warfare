@@ -134,7 +134,7 @@ MonoBehaviour:
   rb: {fileID: 6178490418722228226}
   speed: 150
   lifeSpan: 0.1
-  projetileDamage: 25
+  projetileDamage: 60
   shootMask:
     serializedVersion: 2
     m_Bits: 513
@@ -144,6 +144,8 @@ MonoBehaviour:
   innerFalloffRange: 4
   maxDamage: 100
   minDamage: 10
+  team: -1
+  spawnedFromPlayer: 0
 --- !u!136 &1882874199190160309
 CapsuleCollider:
   m_ObjectHideFlags: 0

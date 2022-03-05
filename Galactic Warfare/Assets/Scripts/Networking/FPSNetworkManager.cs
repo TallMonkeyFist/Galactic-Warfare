@@ -66,7 +66,7 @@ public class FPSNetworkManager : NetworkManager
 		teamTwo.Clear();
 		playerInfoData.Clear();
 		if(useSteam)
-        {
+		{
 			SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
 			LobbyId = ulong.MinValue;
 		}
@@ -97,7 +97,7 @@ public class FPSNetworkManager : NetworkManager
 		//If map name starts with Map_ then it is a valid map
 		if (mapName.StartsWith("Map_"))
 		{
-			Debug.Log("Scene was changed");
+			//Starting deathmatch
 			gameManager.StartDeathmatch();
 		}
 	}
@@ -285,9 +285,9 @@ public class FPSNetworkManager : NetworkManager
 
 	[Server]
 	private void ServerHandlePlayerDisconnect(NetworkConnection conn, int team)
-    {
-        switch (team)
-        {
+	{
+		switch (team)
+		{
 			case 1:
 				teamOne.Remove(conn.identity);
 				break;
@@ -299,11 +299,11 @@ public class FPSNetworkManager : NetworkManager
 				break;
 		}
 
-        foreach (FPSPlayer player in Players)
-        {
+		foreach (FPSPlayer player in Players)
+		{
 			player.TargetRemovePlayerInfo(player.connectionToClient, conn.connectionId);
-        }
-    }
+		}
+	}
 
 	#endregion
 

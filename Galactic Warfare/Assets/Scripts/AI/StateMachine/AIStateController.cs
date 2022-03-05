@@ -81,10 +81,9 @@ public class AIStateController : NetworkBehaviour
 		inventory.team = behavior.team;
 	}
 
-	[ServerCallback]
 	private void FixedUpdate()
 	{
-		if(!aiActive) { return; }
+		if(!isServer) { return; }
 
 		currentState.UpdateState(this);
 	}

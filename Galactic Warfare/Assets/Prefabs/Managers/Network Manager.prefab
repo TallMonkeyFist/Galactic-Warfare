@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 8631402566132574625}
   - component: {fileID: 8631402566132574624}
-  - component: {fileID: -3741524148668077014}
+  - component: {fileID: 3636046370950337342}
   m_Layer: 0
-  m_Name: Manager
+  m_Name: Network Manager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -53,7 +53,7 @@ MonoBehaviour:
   serverBatchInterval: 0
   offlineScene: Assets/Scenes/Lobby.unity
   onlineScene: 
-  transport: {fileID: -3741524148668077014}
+  transport: {fileID: 3636046370950337342}
   networkAddress: localhost
   maxConnections: 4
   disconnectInactiveConnections: 1
@@ -70,12 +70,18 @@ MonoBehaviour:
   - {fileID: 149386419115532921, guid: e5c4997584159ad498298558219226f8, type: 3}
   - {fileID: 8826475041196897878, guid: 679be01d702de7a43aef2dde814a3219, type: 3}
   defaultImage: {fileID: 2800000, guid: c7c867cdc30539c4399065fc53833f11, type: 3}
-  useSteam: 0
+  useSteam: 1
   Players: []
   teamOne: []
   teamTwo: []
   spawnManager: {fileID: 0}
---- !u!114 &-3741524148668077014
+  TeamOneLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  TeamTwoLayer:
+    serializedVersion: 2
+    m_Bits: 0
+--- !u!114 &3636046370950337342
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -84,16 +90,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 8631402566132574629}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b0fecffa3f624585964b0d0eb21b18e, type: 3}
+  m_Script: {fileID: 11500000, guid: ea368fb6f27ec2f40a40e20977992b9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Port: 7777
-  NoDelay: 1
-  Interval: 10
-  FastResend: 2
-  CongestionWindow: 0
-  SendWindowSize: 4096
-  ReceiveWindowSize: 4096
-  debugLog: 0
-  statisticsGUI: 0
-  statisticsLog: 0
+  Channels: 020000000300000001000000
+  Timeout: 25
+  SteamAppID: 1446150
+  AllowSteamRelay: 1
+  SteamUserID: 0

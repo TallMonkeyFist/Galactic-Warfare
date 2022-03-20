@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DataTypes;
 
 public class AIManager : NetworkBehaviour
 {
@@ -47,13 +48,13 @@ public class AIManager : NetworkBehaviour
 			Deathmatch.OnDeathmatchStarted -= initDeathmatchManager;
 			IDMCallback = false;
 		}
-		if (team == 1)
+		if (team == 0)
 		{
 			ServerOnSpawnAI += deathmatch.DrainTicketOne;
 			ServerOnSpawnAI += deathmatch.IncreaseTeamOneCount;
 			ServerAIDie += deathmatch.DecreaseTeamOneCount;
 		}
-		else if(team == 2)
+		else if(team == 1)
 		{
 			ServerOnSpawnAI += deathmatch.DrainTicketTwo;
 			ServerOnSpawnAI += deathmatch.IncreaseTeamTwoCount;

@@ -32,10 +32,6 @@ public class PlayerInventoryManager : NetworkBehaviour
 	[Tooltip("Secondary Item")]
 	[SerializeField] private ItemManager secondaryItem = null;
 
-	[Header("Specialization")]
-	[Tooltip("Specialization for the unit")]
-	[SerializeField] private Specialization specialization = null;
-
 	public static event Action OnWeaponSwap;
 
 	[SyncVar(hook =nameof(SyncPrimaryWeaponActive))]
@@ -534,6 +530,12 @@ public class PlayerInventoryManager : NetworkBehaviour
 		}
 	}
 
+	[Client]
+	public void ClientEnableInput()
+	{
+		InputEnabled = prevInputState;
+	}
+
 	[TargetRpc]
 	private void TargetSetLastSpawnedItem(GameObject lastSpawn)
 	{
@@ -550,7 +552,7 @@ public class PlayerInventoryManager : NetworkBehaviour
 	[TargetRpc]
 	public void TargetEnableInput()
 	{
-		InputEnabled = prevInputState;
+		ClientEnableInput();
 	}
 
 	[TargetRpc]

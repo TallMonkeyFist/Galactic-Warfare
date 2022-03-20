@@ -14,8 +14,6 @@ public class ItemManager : MonoBehaviour
     [Header("UI")]
     [Tooltip("Name of the item")]
     [SerializeField] private string itemName = "Default item";
-    [Tooltip("Weapon icon in the UI")]
-    [SerializeField] private Image itemIcon = null;
 
     [Header("Item Settings")]
     [Tooltip("Item to spawn")]

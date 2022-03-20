@@ -34,9 +34,9 @@ public class Deathmatch : NetworkBehaviour
 	{
 		switch(team)
 		{
-			case 1:
+			case 0:
 				return teamOneTickets;
-			case 2:
+			case 1:
 				return teamTwoTickets;
 			default:
 				return -1;
@@ -114,11 +114,15 @@ public class Deathmatch : NetworkBehaviour
 	{
 		if(teamOneTickets <= 0 && teamOneAlivePlayers <= 0)
 		{
-			SetGameOver(2);
-		}
-		if(teamTwoTickets <= 0 && teamTwoAlivePlayers <= 0)
-		{
 			SetGameOver(1);
+		}
+		else if(teamTwoTickets <= 0 && teamTwoAlivePlayers <= 0)
+		{
+			SetGameOver(0);
+		}
+		else if(teamOneTickets <= 0 && teamOneAlivePlayers <= 0 && teamTwoTickets <= 0 && teamTwoAlivePlayers <= 0)
+		{
+			SetGameOver(2);
 		}
 	}
 
@@ -128,16 +132,16 @@ public class Deathmatch : NetworkBehaviour
 		gameOver = false;
 		switch(team)
 		{
+			case 0:
+				winningTeam = 0;
+				break;
+
 			case 1:
 				winningTeam = 1;
 				break;
 
-			case 2:
-				winningTeam = 2;
-				break;
-
 			default:
-				winningTeam = 3;
+				winningTeam = 2;
 				break;
 		}
 		ServerOnGameOver?.Invoke(winningTeam);

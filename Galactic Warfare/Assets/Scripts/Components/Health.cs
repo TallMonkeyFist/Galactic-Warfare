@@ -22,6 +22,7 @@ public class Health : NetworkBehaviour
 	public event Action ServerOnSpawn;
 	public event Action ServerOnDie;
 	public event Action<float, float> ClientOnHealthChanged;
+	private FPSNetworkManager NM = null;
 
 	[SyncVar (hook =nameof(HandleHealthChanged))]
 	private float currentHealth;
@@ -36,6 +37,7 @@ public class Health : NetworkBehaviour
 	public override void OnStartServer()
 	{
 		currentHealth = maxHealth;
+		ServerOnSpawn?.Invoke();
 	}
 
 	[Server]
@@ -71,7 +73,6 @@ public class Health : NetworkBehaviour
 	public void ServerSetTeam(int teamNumber)
 	{
 		team = teamNumber;
-		ServerOnSpawn?.Invoke();
 	}
 
 	[Server]
@@ -92,15 +93,17 @@ public class Health : NetworkBehaviour
 	{
 		base.OnStartClient();
 
+		NM = NetworkManager.singleton as FPSNetworkManager;
+
 		if (playerRenderer == null) { return; }
 
-		if (team == 1)
+		if (team == 0)
 		{
-			playerRenderer.material.color = Color.red;
+			playerRenderer.material.color = NM.TeamOneColor;
 		}
-		else if(team == 2)
+		else if(team == 1)
 		{
-			playerRenderer.material.color = Color.blue;
+			playerRenderer.material.color = NM.TeamTwoColor;
 		}
 		else
 		{
@@ -127,11 +130,11 @@ public class Health : NetworkBehaviour
 	{
 		if(playerRenderer == null) { return; }
 
-		if (newTeam == 1)
+		if (newTeam == 0)
 		{
 			playerRenderer.material.color = Color.red;
 		}
-		else if (newTeam == 2)
+		else if (newTeam == 1)
 		{
 			playerRenderer.material.color = Color.blue;
 		}

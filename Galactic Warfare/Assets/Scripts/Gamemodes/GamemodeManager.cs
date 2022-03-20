@@ -10,13 +10,18 @@ public class GamemodeManager : NetworkBehaviour
 	public Deathmatch deathmatch { get; private set; } = null;
 
 	public bool GameRunning { get; private set; }
+	public FPSNetworkManager NM;
 
 	public static GamemodeManager singleton { get; private set; } = null;
 	public static event Action ServerOnManagerInitialized;
+	public static event Action ServerOnGameStart;
+	public static event Action ServerOnGameEnd;
 
 	[Server]
 	public void StartDeathmatch()
 	{
+		ServerHandleGameStart();
+		
 		UI_Game.RestartGame += Restart;
 
 		deathmatch = Deathmatch.singleton;
@@ -25,20 +30,21 @@ public class GamemodeManager : NetworkBehaviour
 			deathmatch = gameObject.AddComponent<Deathmatch>();
 		}
 
-		FPSNetworkManager networkManager = (FPSNetworkManager)NetworkManager.singleton;
-		foreach(FPSPlayer player in networkManager.Players)
+		Debug.Log($"Player count {NM.Players.Count}");
+		foreach (LobbyPlayer lp in NM.Players)
 		{
+			FPSPlayer player = lp.GamePlayer;
 			ServerHandlePlayerStartGame(player);
 
-			player.CanPlayerSpawn += () => deathmatch.GetRemainingTickets(player.PlayerTeam) > 0;
+			player.CanPlayerSpawn += () => deathmatch.GetRemainingTickets(lp.PlayerTeam) > 0;
 
-			if (player.PlayerTeam == 1)
+			if (player.PlayerTeam == 0)
 			{
 				player.ServerOnSpawn += deathmatch.IncreaseTeamOneCount;
 				player.ServerOnSpawn += deathmatch.DrainTicketOne;
 				player.ServerOnDie += deathmatch.DecreaseTeamOneCount;
 			}
-			else if(player.PlayerTeam == 2)
+			else if(player.PlayerTeam == 1)
 			{
 				player.ServerOnSpawn += deathmatch.IncreaseTeamTwoCount;
 				player.ServerOnSpawn += deathmatch.DrainTicketTwo;
@@ -51,20 +57,19 @@ public class GamemodeManager : NetworkBehaviour
 		deathmatch.ServerOnGameOver += EndDeathmatch;
 
 		deathmatch.StartGame(50, 50);
-
-		ServerHandleGameStart();
+		ServerOnGameStart?.Invoke();
 	}
 
 	[Server]
 	public void EndDeathmatch(int winningTeam)
 	{
 		ServerHandleGameEnd(winningTeam);
-		FPSNetworkManager networkManager = (FPSNetworkManager)NetworkManager.singleton;
-		foreach (FPSPlayer player in networkManager.Players)
+		foreach (LobbyPlayer lp in NM.Players)
 		{
+			FPSPlayer player = lp.GamePlayer;
 			player.TargetDisableSpawnUI();
-			bool teamOneWin = winningTeam == 1;
-			if (player.PlayerTeam == 1)
+			bool teamOneWin = winningTeam == 0;
+			if (player.PlayerTeam == 0)
 			{
 				player.ServerOnSpawn -= deathmatch.IncreaseTeamOneCount;
 				player.ServerOnSpawn -= deathmatch.DrainTicketOne;
@@ -72,7 +77,7 @@ public class GamemodeManager : NetworkBehaviour
 
 				ServerHandlePlayerEndGame(player, teamOneWin);
 			}
-			else if (player.PlayerTeam == 2)
+			else if (player.PlayerTeam == 1)
 			{
 				player.ServerOnSpawn -= deathmatch.IncreaseTeamTwoCount;
 				player.ServerOnSpawn -= deathmatch.DrainTicketTwo;
@@ -88,24 +93,14 @@ public class GamemodeManager : NetworkBehaviour
 	private void Restart()
 	{
 		UI_Game.RestartGame -= Restart;
-		((FPSNetworkManager)NetworkManager.singleton).RestartScene();
+		NM.ServerRestartScene();
 	}
 
 	[Server]
 	private void ServerHandlePlayerStartGame(FPSPlayer player)
 	{
-		player.TargetEnableSpawnUI();
-
-		player.GameUI.TargetEnableGameUI();
-
-		player.TargetResetSpawnManager();
-
-		if (player.TryGetComponent(out PlayerInventoryManager inventory))
-		{
-			inventory.TargetEnableInput();
-		}
-
-		player.GameUI.isHost = player.IsHost;
+		player.GameUI.isHost = player.OwningPlayer.IsHost;
+		player.TargetHandleGameStart();
 	}
 
 	[Server]
@@ -131,13 +126,13 @@ public class GamemodeManager : NetworkBehaviour
 	[Server]
 	public void ServerHandlePlayerDisconnect(FPSPlayer player)
 	{
-		if (player.PlayerTeam == 1)
+		if (player.PlayerTeam == 0)
 		{
 			player.ServerOnSpawn -= deathmatch.IncreaseTeamOneCount;
 			player.ServerOnSpawn -= deathmatch.DrainTicketOne;
 			player.ServerOnDie -= deathmatch.DecreaseTeamOneCount;
 		}
-		else if (player.PlayerTeam == 2)
+		else if (player.PlayerTeam == 1)
 		{
 			player.ServerOnSpawn -= deathmatch.IncreaseTeamTwoCount;
 			player.ServerOnSpawn -= deathmatch.DrainTicketTwo;
@@ -150,12 +145,18 @@ public class GamemodeManager : NetworkBehaviour
 	private void ServerHandleGameStart()
 	{
 		singleton = this;
+		NM = NetworkManager.singleton as FPSNetworkManager;
 		ServerOnManagerInitialized?.Invoke();
+		for(int i = 0; i < NM.Players.Count; i++)
+		{
+			NM.Players[i].ServerSpawnGamePlayer();
+		}
 	}
 
 	[Server]
 	private void ServerHandleGameEnd(int winningTeam)
 	{
+		ServerOnGameEnd?.Invoke();
 		CheckGamemodeAchievmentProgress(winningTeam);
 		deathmatch.ServerOnGameOver -= EndDeathmatch;
 	}
@@ -163,12 +164,12 @@ public class GamemodeManager : NetworkBehaviour
 	[Server]
 	private void CheckGamemodeAchievmentProgress(int winningTeam)
 	{
-		FPSNetworkManager manager = NetworkManager.singleton as FPSNetworkManager;
-		if(!manager.useSteam) { return; }
-		List<FPSPlayer> players = manager.Players;
+		if(!NM.useSteam) { return; }
+		List<LobbyPlayer> players = NM.Players;
+		LobbyPlayer player;
 		for(int i = 0; i < players.Count; i++)
 		{
-			FPSPlayer player = players[i];
+			player = players[i];
 			if(player.PlayerTeam == winningTeam)
 			{
 				player.TargetUnlockAchievement(AchievementName.WIN_1_GAME);

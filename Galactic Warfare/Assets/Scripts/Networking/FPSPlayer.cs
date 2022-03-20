@@ -3,20 +3,13 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DataTypes;
 
 public class FPSPlayer : NetworkBehaviour
 {
-	public struct PlayerDisplayInfo
-	{
-		public string Name;
-		public Texture2D Avatar;
-		public int ID;
-		public ulong SteamID;
-	}
-
 	[Header("References")]
 	[Tooltip("FPS Player prefab to spawn")]
-	[SerializeField] private GameObject fpsPlayerPrefab = null;
+	[SerializeField] private GameObject FPSPlayerPrefab = null;
 	[Tooltip("Spawn Manager to get selected equipment")]
 	[SerializeField] private PlayerSpawnManager spawnManager = null;
 
@@ -31,7 +24,7 @@ public class FPSPlayer : NetworkBehaviour
 	[Tooltip("UI for a game in progress")]
 	[SerializeField] private UI_Game gameUI = null;
 
-	private FPSNetworkManager nm;
+	private FPSNetworkManager NM;
 	private NetworkConnectionToClient client;
 	private int playerIndex;
 
@@ -40,81 +33,41 @@ public class FPSPlayer : NetworkBehaviour
 
 	public event Func<bool> CanPlayerSpawn;
 
-	[SyncVar(hook = nameof(SyncIsHost))]
-	private bool isHost = false;
-
-	protected Callback<AvatarImageLoaded_t> avatarImageLoaded;
-
-	private Texture2D displayImage;
-
-	public static event Action<List<PlayerDisplayInfo>> ClientOnInfoUpdated;
-	public static event Action<bool> AuthorityOnPartyOwnerStateUpdated;
-	public static event Action ClientOnWinGame;
-	public static event Action ClientOnLoseGame;
-
 	public event Action ServerOnDie;
 	public event Action ServerOnSpawn;
-
-	public bool IsHost { get { return isHost; } }
 	public int PlayerTeam { get { return team; } }
-	//public string DisplayName { get { return displayName; } }
-	public Texture2D DisplayImage { get { return displayImage; } }
 	public UI_Game GameUI { get { return gameUI; } }
 
 	private int SpawnIndex = 0;
 
-	private List<PlayerDisplayInfo> playerDisplayInfo = new List<PlayerDisplayInfo>();
-
-	private ulong m_SteamID;
+	public LobbyPlayer OwningPlayer;
 
 	#region Server
 
 	public override void OnStartServer()
 	{
-		nm = (FPSNetworkManager) NetworkManager.singleton;
-		playerIndex = nm.spawnPrefabs.IndexOf(fpsPlayerPrefab);
-
+		base.OnStartServer();
+		
+		NM = (FPSNetworkManager) NetworkManager.singleton;
+		playerIndex = NM.spawnPrefabs.IndexOf(FPSPlayerPrefab);
 		ServerOnSpawn += TargetDisableMouseCursor;
-
-		RpcUpdateInfo();
-
-		DontDestroyOnLoad(gameObject);
-
-		if(isHost)
-		{
-			avatarImageLoaded = Callback<AvatarImageLoaded_t>.Create(OnAvatarImageLoaded);
-		}
+		ClientHandleGameStart();
 	}
 
 	public override void OnStopServer()
 	{
+		OwningPlayer.ServerOnDisconnect -= ServerKillPlayer;
+
 		base.OnStopServer();
 	}
 
 	[Server]
-	public void SetDisplayName(string displayName)
+	public void ServerInitializePlayer(LobbyPlayer owner)
 	{
-		//this.displayName = displayName;
-	}
-
-	[Server]
-	public void SetSteamId(ulong id)
-	{
-		m_SteamID = id;
-	}
-
-	[Server]
-	public void SetPartyOwner(bool state)
-	{
-		isHost = state;
-	}
-
-	[Command]
-	public void CmdStartGame(string level)
-	{
-		if(!isHost) { return; }
-
-		((FPSNetworkManager)NetworkManager.singleton).StartGame(level);
+		OwningPlayer = owner;
+		OwningPlayer.ServerOnDisconnect += ServerKillPlayer;
+		ServerSetTeam(owner.PlayerTeam);
+		TargetHandleGameStart();
 	}
 
 	[Command]
@@ -133,13 +86,11 @@ public class FPSPlayer : NetworkBehaviour
 
 		if (CanPlayerSpawn == null || !CanPlayerSpawn.Invoke()) { return; }
 
-		FPSNetworkManager networkManager = (FPSNetworkManager)NetworkManager.singleton;
-
-		SpawnTransform spawnData = networkManager.ServerGetSpawnLocation(index, team);
+		SpawnTransform spawnData = NM.ServerGetSpawnLocation(index, team);
 
 		if(spawnData.position.Equals(Vector3.positiveInfinity)) { return; }
 
-		GameObject playerInstance = Instantiate(nm.spawnPrefabs[playerIndex], spawnData.position, Quaternion.identity);
+		GameObject playerInstance = Instantiate(NM.spawnPrefabs[playerIndex], spawnData.position, Quaternion.identity);
 		playerInstance.transform.forward = spawnData.forwardDirection;
 
 		m_CurrentPlayer = playerInstance;
@@ -167,12 +118,6 @@ public class FPSPlayer : NetworkBehaviour
 		TargetSetPlayerAlive(conn, true);
 
 		ServerOnSpawn?.Invoke();
-	}
-
-	[Command]
-	public void CmdUpdatePlayerInfo()
-	{
-		RpcUpdateInfo();
 	}
 
 	[Server]
@@ -203,9 +148,9 @@ public class FPSPlayer : NetworkBehaviour
 		this.team = team;
 		if(m_CurrentPlayer != null)
 		{
-			if(m_CurrentPlayer.TryGetComponent<Health>(out Health player))
+			if(m_CurrentPlayer.TryGetComponent<Health>(out Health health))
 			{
-				player.ServerSetTeam(team);
+				health.ServerSetTeam(team);
 			}
 		}
 	}
@@ -216,32 +161,25 @@ public class FPSPlayer : NetworkBehaviour
 
 	public override void OnStartClient()
 	{
-		if (isHost) { return; }
-
-		DontDestroyOnLoad(gameObject);
-
 		if (!hasAuthority) { return; }
 
-		DisableSpawnUI();
+		EnableSpawnUI();
 		Cursor.lockState = CursorLockMode.None;
 	}
 
 	public override void OnStopClient()
 	{
-		if(isHost) { return; }
-
 		if(!hasAuthority) { return; }
-	}
-
-	private void SyncIsHost(bool oldState, bool newState)
-	{
-		if (!hasAuthority) { return; }
-
-		AuthorityOnPartyOwnerStateUpdated?.Invoke(newState);
 	}
 
 	[TargetRpc]
 	public void TargetResetSpawnManager()
+	{
+		ClientResetSpawnManager();
+	}
+
+	[Client]
+	public void ClientResetSpawnManager()
 	{
 		spawnManager.InitDropdowns();
 	}
@@ -268,7 +206,32 @@ public class FPSPlayer : NetworkBehaviour
 	}
 
 	[TargetRpc]
+	public void TargetHandleGameStart()
+	{
+		ClientHandleGameStart();
+	}
+
+	[Client]
+	private void ClientHandleGameStart()
+	{
+		if(!hasAuthority){ return; }
+		EnableSpawnUI();
+		GameUI.ClientEnableGameUI();
+		ClientResetSpawnManager();
+		if (TryGetComponent(out PlayerInventoryManager inventory))
+		{
+			inventory.ClientEnableInput();
+		}
+	}
+
+	[TargetRpc]
 	public void TargetEnableSpawnUI()
+	{
+		EnableSpawnUI();
+	}
+
+	[Client]
+	public void EnableSpawnUI()
 	{
 		if (!hasAuthority) { return; }
 		canvasSpawn.SetActive(true);
@@ -284,14 +247,6 @@ public class FPSPlayer : NetworkBehaviour
 	}
 
 	[Client]
-	private void EnableSpawnUI()
-	{
-		if (!hasAuthority) { return; }
-		canvasSpawn.SetActive(true);
-		Cursor.lockState = CursorLockMode.None;
-	}
-
-	[Client]
 	private void DisableSpawnUI()
 	{
 		if(!hasAuthority) { return; }
@@ -299,167 +254,15 @@ public class FPSPlayer : NetworkBehaviour
 		canvasSpawn.SetActive(false);
 	}
 
-	[Client]
-	private void ClientHandleDisplayNameUpdated(string oldName, string newName)
-	{
-		for(int i = 0; i < playerDisplayInfo.Count; i++)
-		{
-			if(playerDisplayInfo[i].ID == netIdentity.connectionToServer.connectionId)
-			{
-				PlayerDisplayInfo info = playerDisplayInfo[i];
-				info.Name = newName;
-				playerDisplayInfo[i] = info;
-				ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
-			}
-		}
-	}
-
-	[Client]
-	private void ClientHandleSteamIDUpdated(ulong Oldid, ulong newId)
-	{
-		if (newId == ulong.MinValue)
-		{
-			displayImage = ((FPSNetworkManager)NetworkManager.singleton).defaultImage;
-			return;
-		}
-
-		CSteamID id = new CSteamID(newId);
-		Texture2D playerAvatar = GetSteamImageAsTexture(id);
-		displayImage = playerAvatar;
-	}
-
-	private void OnAvatarImageLoaded(AvatarImageLoaded_t callback)
-	{
-		Texture2D image = GetSteamImageAsTexture(callback.m_steamID);
-		for(int i = 0; i < playerDisplayInfo.Count; i++)
-		{
-			if(playerDisplayInfo[i].SteamID == callback.m_steamID.m_SteamID)
-			{
-				PlayerDisplayInfo info = playerDisplayInfo[i];
-				info.Avatar = image;
-				playerDisplayInfo[i] = info;
-			}
-		}
-		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
-	}
-
-	private Texture2D GetSteamImageAsTexture(CSteamID id)
-	{
-		int iImage = SteamFriends.GetLargeFriendAvatar(id);
-
-		if(iImage == -1)
-		{
-			avatarImageLoaded = Callback<AvatarImageLoaded_t>.Create(OnAvatarImageLoaded);
-		}
-
-		else if(SteamUtils.GetImageSize(iImage, out uint width, out uint height))
-		{
-			byte[] image = new byte[width * height * 4];
-
-			if (SteamUtils.GetImageRGBA(iImage, image, (int)(width * height * 4)))
-			{
-				Texture2D texture = new Texture2D((int)width, (int)height, TextureFormat.RGBA32, false, true);
-				byte r, g, b, a;
-				for(int i = 0; i < image.Length / 2; i+=4)
-				{
-					r = image[i];
-					g = image[i + 1];
-					b = image[i + 2];
-					a = image[i + 3];
-					image[i] = image[image.Length - i - 4];
-					image[i + 1] = image[image.Length - i - 3];
-					image[i + 2] = image[image.Length - i - 2];
-					image[i + 3] = image[image.Length - i - 1];
-					image[image.Length - i - 4] = r;
-					image[image.Length - i - 3] = g;
-					image[image.Length - i - 2] = b;
-					image[image.Length - i - 1] = a;
-				}
-				texture.LoadRawTextureData(image);
-				texture.Apply();
-				return texture;
-			}
-		}
-
-		return ((FPSNetworkManager)NetworkManager.singleton).defaultImage;
-	}
-
 	public void SetSpawnLocationIndex(int index)
 	{
 		SpawnIndex = index;
-	}
-
-	[ClientRpc]
-	public void RpcUpdateInfo()
-	{
-		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
 	}
 
 	[TargetRpc]
 	private void TargetDisableMouseCursor()
 	{
 		Cursor.lockState = CursorLockMode.Locked;
-	}
-
-	[TargetRpc]
-	public void TargetClearPlayerList(NetworkConnection conn)
-	{
-		playerDisplayInfo.Clear();
-	}
-
-	[TargetRpc]
-	public void TargetRemovePlayerInfo(NetworkConnection conn, int ID)
-	{
-		for (int i = playerDisplayInfo.Count - 1; i >= 0; i--)
-		{
-			if (playerDisplayInfo[i].ID == ID)
-			{
-				playerDisplayInfo.RemoveAt(i);
-				break;
-			}
-		}
-		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
-	}
-
-	[ClientRpc]
-	public void RpcAddPlayerInfo(string name, ulong steamID, bool steam, int id)
-	{
-		AddPlayerInfo(name, steamID, steam, id);
-	}
-
-	[TargetRpc]
-	public void TargetAddPlayerInfo(NetworkConnection conn, string name, ulong steamID, bool steam, int id)
-	{
-		AddPlayerInfo(name, steamID, steam, id);
-	}
-
-	[Client]
-	private void AddPlayerInfo(string name, ulong steamID, bool steam, int id)
-	{
-		PlayerDisplayInfo info = new PlayerDisplayInfo();
-		info.Name = name;
-		info.ID = id;
-		info.SteamID = steamID;
-		if (!steam)
-		{
-			info.Avatar = ((FPSNetworkManager)NetworkManager.singleton).defaultImage;
-		}
-		else
-		{
-			info.Avatar = GetSteamImageAsTexture(new CSteamID(steamID));
-		}
-
-		playerDisplayInfo.Add(info);
-		ClientOnInfoUpdated?.Invoke(playerDisplayInfo);
-	}
-
-	[TargetRpc]
-	public void TargetUnlockAchievement(AchievementName achievement)
-	{
-		if(SteamManager.Initialized)
-		{
-			SteamUserStats.SetAchievement(achievement.ToString());
-		}
 	}
 	#endregion
 }

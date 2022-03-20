@@ -21221,6 +21221,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
+      propertyPath: team
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: spawnDirection.x
       value: 0
       objectReference: {fileID: 0}
@@ -21230,7 +21234,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: spawnLocationName
-      value: Red Team Base
+      value: Team One Base
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: useSpawnDirection
@@ -21238,7 +21242,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084755, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: m_Name
-      value: Red Base Spawner
+      value: Team One Base
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
@@ -21856,7 +21860,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: team
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: spawnDirection.x
@@ -21868,7 +21872,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: spawnLocationName
-      value: Blue Team Base
+      value: Team Two Base
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: useSpawnDirection
@@ -21876,7 +21880,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084755, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: m_Name
-      value: Blue Base Spawner
+      value: Team Two Base
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
@@ -22205,7 +22209,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  team: 1
+  team: 0
   AICount: 10
   minTimeToSpawn: 2
   maxTimeToSpawn: 25
@@ -40915,7 +40919,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  team: 2
+  team: 1
   AICount: 10
   minTimeToSpawn: 2
   maxTimeToSpawn: 25

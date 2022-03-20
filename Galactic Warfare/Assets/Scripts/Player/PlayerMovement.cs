@@ -38,9 +38,6 @@ public class PlayerMovement : NetworkBehaviour
 	[Tooltip("Player mouse speed")]
 	[SerializeField] private float mouseSensitivity = 250.0f;
 
-	[Header("Force")]
-	[SerializeField] private float mass = 62.0f;
-
 
 	[SyncVar(hook = nameof(SyncServerLastMove))]
 	private PlayerMoveState ServerLastMove;

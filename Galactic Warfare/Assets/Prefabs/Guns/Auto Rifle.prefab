@@ -408,7 +408,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 513
   weaponName: Auto Rifle
-  weaponIcon: {fileID: 0}
   projectilePrefab: {fileID: 8873095227552482830, guid: a953fd48657e76b4eb4416c1e8226651, type: 3}
   magazineCapacity: 30
   maxAmmo: 210
@@ -419,7 +418,6 @@ MonoBehaviour:
   fireSound: {fileID: 8300000, guid: c3ad0996a57d224438ccac3adc4d3868, type: 3}
   reloadSound: {fileID: 8300000, guid: 56ee26e7db9a51742a4c3f9830e21089, type: 3}
   drawWeaponSound: {fileID: 8300000, guid: e3660614f89d19a439299bc390bf6c46, type: 3}
-  fireVolume: 0.5
   audioSource: {fileID: -3092428054914184111}
   AlreadyShot: 0
   m_MagazineAmmo: 0

@@ -9,6 +9,12 @@ EditorBuildSettings:
     path: Assets/Scenes/Lobby.unity
     guid: 9c59193e8b7d79d4db2f8f0bba77fc43
   - enabled: 1
+    path: Assets/GalaxyMap/Scenes/Menu.unity
+    guid: 04fa9707694883041a816716d04f2561
+  - enabled: 1
+    path: Assets/GalaxyMap/Scenes/Galaxy Scene.unity
+    guid: 338805fd0c5ef504aab638ad4cf779a5
+  - enabled: 1
     path: Assets/Scenes/Maps/Map_01.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab
   - enabled: 1

@@ -2157,7 +2157,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1010986560893978973, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: m_Name
-      value: Red Side Spawn
+      value: Team One Flag Spawn
       objectReference: {fileID: 0}
     - target: {fileID: 5127490061162272426, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: sceneId
@@ -2309,7 +2309,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5982675468831931730, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: spawnLocationName
-      value: Red Side Flag
+      value: Team One Flag
       objectReference: {fileID: 0}
     - target: {fileID: 5982675468831931730, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: useSpawnDirection
@@ -3171,7 +3171,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1010986560893978973, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: m_Name
-      value: Blue Side Spawn
+      value: Team Two Flag Spawn
       objectReference: {fileID: 0}
     - target: {fileID: 5127490061162272426, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: sceneId
@@ -3323,7 +3323,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5982675468831931730, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: spawnLocationName
-      value: Blue Side Flag
+      value: Team Two Flag
       objectReference: {fileID: 0}
     - target: {fileID: 5982675468831931730, guid: cc02cc72ed5f31046a160044a55d619b, type: 3}
       propertyPath: useSpawnDirection
@@ -6268,8 +6268,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7418cd4050be2df44b293318ed160374, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  team: 2
-  spawnLocationName: Blue Team Base
+  team: 1
+  spawnLocationName: Team Two Base
   useSpawnDirection: 1
   spawnDirection: {x: -1, y: -1}
 --- !u!4 &1112667819
@@ -6747,7 +6747,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  team: 2
+  team: 1
   AICount: 10
   minTimeToSpawn: 2
   maxTimeToSpawn: 25
@@ -9298,7 +9298,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  team: 1
+  team: 0
   AICount: 10
   minTimeToSpawn: 2
   maxTimeToSpawn: 25
@@ -11058,6 +11058,14 @@ PrefabInstance:
     - target: {fileID: 1393152916207084749, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
+      propertyPath: team
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1393152916207084754, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
+      propertyPath: spawnLocationName
+      value: Team One Base
       objectReference: {fileID: 0}
     - target: {fileID: 1393152916207084755, guid: f41d6a32a762b064cbdc25fec3b65095, type: 3}
       propertyPath: m_Name

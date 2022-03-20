@@ -46,7 +46,6 @@ MonoBehaviour:
   spawnTransform: {fileID: 0}
   rotationTransform: {fileID: 0}
   itemName: Mines
-  itemIcon: {fileID: 0}
   itemPrefab: {fileID: 8826475041196897878, guid: 679be01d702de7a43aef2dde814a3219, type: 3}
   maxItemCount: 10
   spawnRate: 1

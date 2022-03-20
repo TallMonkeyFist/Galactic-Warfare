@@ -17,6 +17,10 @@ public class Flag : NetworkBehaviour
 	[Header("AI")]
 	[Tooltip("Patrol routes around the flag")]
 	[SerializeField] private PatrolPattern[] patrolRoutes = null;
+
+	[Header("Settings")]
+	[Tooltip("Time it takes to capture a neutral flag")]
+	public float FlagCaptureTime = 10.0f;
 	[Tooltip("Bounds required to be occupied to capture the flag")]
 	[SerializeField] private Collider captureTrigger = null;
 
@@ -32,12 +36,17 @@ public class Flag : NetworkBehaviour
 
 	public SpawnSystem FlagSpawnSystem { get { return flagSpawnSystem; } }
 	public float FlagValue { get { return flagValue; } }
+	private List<Health> TeamOnePlayers = new List<Health>();
+	private List<Health> TeamTwoPlayers = new List<Health>();
 
 	private int teamOneCount;
 	private int teamTwoCount;
 	private int flagTeamOwner;
 	[SyncVar]
 	private int flagIndex = -1;
+	private float flagCaptureDelta = 10.0f;
+
+	public static bool DisplayLogInfo = true;
 
 	public Vector3 GetRandomPosition(float xDelta, float yDelta, float zDelta)
 	{
@@ -84,132 +93,158 @@ public class Flag : NetworkBehaviour
 		flagIndex = index;
 	}
 
-	[Server]
-	private void RemoveCountTeamOne()
-	{
-		teamOneCount--;
-	}
-
-	[Server]
-	private void RemoveCountTeamTwo()
-	{
-		teamTwoCount--;
-	}
-
 	public override void OnStartServer()
 	{
 		flagValue = 0;
-		ServerSetTeamSpawn(0);
+		ServerSetTeamSpawn(-1);
+		teamOneColor = (NetworkManager.singleton as FPSNetworkManager).TeamOneColor;
+		teamTwoColor = (NetworkManager.singleton as FPSNetworkManager).TeamTwoColor;
+		flagCaptureDelta = 100.0f / FlagCaptureTime;
 	}
 
-	[ServerCallback]
 	private void FixedUpdate()
 	{
+		if (!isServer) { return; }
+
+		PruneNullPlayers();
+		CalculateFlagValue();
+	}
+
+	private void OnTriggerEnter(Collider other)
+	{
+		if (!isServer) { return; }
+
+		if (other.TryGetComponent(out Health player))
+		{
+			if(player.GetTeam() == 0 && !TeamOnePlayers.Contains(player))
+			{
+				Logger.Log($"Team one player entering flag {gameObject.name}", DisplayLogInfo);
+				TeamOnePlayers.Add(player);
+			}
+			else if(player.GetTeam() == 1 && !TeamTwoPlayers.Contains(player))
+			{
+				Logger.Log($"Team two player entering flag {gameObject.name}", DisplayLogInfo);
+				TeamTwoPlayers.Add(player);
+			}
+		}
+	}
+
+	private void OnTriggerExit(Collider other)
+	{
+		if (!isServer) { return; }
+
+		if (other.TryGetComponent(out Health player))
+		{
+			if (player.GetTeam() == 0)
+			{
+				Logger.Log($"Team one player leaving flag {gameObject.name}", DisplayLogInfo);
+				TeamOnePlayers.Remove(player);
+			}
+			else if (player.GetTeam() == 1)
+			{
+				Logger.Log($"Team one player leaving flag {gameObject.name}", DisplayLogInfo);
+				TeamTwoPlayers.Remove(player);
+			}
+		}
+	}
+
+	[Server]
+	private void PruneNullPlayers()
+	{
+		for(int i = TeamOnePlayers.Count - 1; i >= 0; i--)
+		{
+			if(TeamOnePlayers[i] == null) 
+			{
+				TeamOnePlayers.RemoveAt(i);
+				Logger.Log($"Team one player leaving flag {gameObject.name}", DisplayLogInfo);
+			}
+		}
+		for(int i = TeamTwoPlayers.Count - 1; i >= 0; i--)
+		{
+			if (TeamTwoPlayers[i] == null) 
+			{
+				TeamTwoPlayers.RemoveAt(i);
+				Logger.Log($"Team two player leaving flag {gameObject.name}", DisplayLogInfo);
+			}
+		}
+	}
+
+
+	[Server]
+	private void CalculateFlagValue()
+	{
+		teamOneCount = TeamOnePlayers.Count;
+		teamTwoCount = TeamTwoPlayers.Count;
+
 		//If team one has more players and hasn't captured the flag
 		//  capture for team one
-		if(teamOneCount > teamTwoCount && flagValue <= 100.0f)
+		if (teamOneCount > teamTwoCount && flagValue <= 100.0f)
 		{
-			flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * 20, -100, 100);
+			flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * flagCaptureDelta, -100, 100);
 			if (0 <= flagValue && flagValue < 100)
 			{
-				ServerSetTeamSpawn(0);
+				ServerSetTeamSpawn(-1);
 			}
 			if (100 <= flagValue)
 			{
-				ServerSetTeamSpawn(1);
+				ServerSetTeamSpawn(0);
 			}
 		}
 		//If team two has more players and hasn't captured the flag
 		//  capture for team two
-		else if(teamOneCount < teamTwoCount && flagValue >= -100.0f)
+		else if (teamOneCount < teamTwoCount && flagValue >= -100.0f)
 		{
-			flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * 20, -100, 100);
-			if(-100 < flagValue && flagValue <= 0)
+			flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * flagCaptureDelta, -100, 100);
+			if (-100 < flagValue && flagValue <= 0)
 			{
-				ServerSetTeamSpawn(0);
+				ServerSetTeamSpawn(-1);
 			}
-			if(flagValue <= -100)
+			if (flagValue <= -100)
 			{
-				ServerSetTeamSpawn(2);
+				ServerSetTeamSpawn(1);
 			}
 		}
 		//If team one and team two are trying to capture the flag
 		//  decapture the flag for owning team
-		else if(teamOneCount == teamTwoCount && teamTwoCount > 0 && flagValue != 0.0f)
+		else if (teamOneCount == teamTwoCount && teamTwoCount > 0 && flagValue != 0.0f)
 		{
-			if(flagValue > 0.0f)
+			if (flagValue > 0.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * 20, 0, 100);
+				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * flagCaptureDelta, 0, 100);
 			}
-			if(flagValue < 0.0f)
+			if (flagValue < 0.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * 20, -100, 0);
+				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * flagCaptureDelta, -100, 0);
 			}
-			if(flagValue == 0.0f)
+			if (flagValue == 0.0f)
 			{
-				ServerSetTeamSpawn(0);
+				ServerSetTeamSpawn(-1);
 			}
 		}
 		//If no one is trying to capture the flag && flag is not captured
 		//  Reset flag back to zero value
-		else if(teamOneCount == 0 && teamTwoCount == 0 && flagTeamOwner == 0 && flagValue != 0.0f)
+		else if (teamOneCount == 0 && teamTwoCount == 0 && flagTeamOwner == 0 && flagValue != 0.0f)
 		{
 			if (flagValue > 0.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * 20, 0, 100);
+				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * flagCaptureDelta, 0, 100);
 			}
 			if (flagValue < 0.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * 20, -100, 0);
+				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * flagCaptureDelta, -100, 0);
 			}
 		}
 		//If no one is trying to capture the flag && flag is owned
 		//  Reset flag back to team value
-		else if(teamOneCount == 0 && teamTwoCount == 0 && flagTeamOwner != 0)
+		else if (teamOneCount == 0 && teamTwoCount == 0 && flagTeamOwner != 0)
 		{
-			if(flagTeamOwner == 1 && flagValue <= 100.0f)
+			if (flagTeamOwner == 0 && flagValue <= 100.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * 20, -100, 100);
+				flagValue = Mathf.Clamp(flagValue + (Time.deltaTime) * flagCaptureDelta, -100, 100);
 			}
-			else if(flagTeamOwner == 2 && flagValue >= -100.0f)
+			else if (flagTeamOwner == 1 && flagValue >= -100.0f)
 			{
-				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * 20, -100, 100);
-			}
-		}
-	}
-
-	[ServerCallback]
-	private void OnTriggerEnter(Collider other)
-	{
-		if(other.TryGetComponent<Health>(out Health player))
-		{
-			if(player.GetTeam() == 1)
-			{
-				teamOneCount++;
-				player.ServerOnDie += RemoveCountTeamOne;
-			}
-			else if(player.GetTeam() == 2)
-			{
-				teamTwoCount++;
-				player.ServerOnDie += RemoveCountTeamTwo;
-			}
-		}
-	}
-
-	[ServerCallback]
-	private void OnTriggerExit(Collider other)
-	{
-		if (other.TryGetComponent<Health>(out Health player))
-		{
-			if (player.GetTeam() == 1)
-			{
-				teamOneCount--;
-				player.ServerOnDie -= RemoveCountTeamOne;
-			}
-			else if (player.GetTeam() == 2)
-			{
-				teamTwoCount--;
-				player.ServerOnDie -= RemoveCountTeamTwo;
+				flagValue = Mathf.Clamp(flagValue - (Time.deltaTime) * flagCaptureDelta, -100, 100);
 			}
 		}
 	}
@@ -229,20 +264,24 @@ public class Flag : NetworkBehaviour
 
 	#region Client
 
+	public override void OnStartClient()
+	{
+		base.OnStartClient();
+
+		teamOneColor = (NetworkManager.singleton as FPSNetworkManager).TeamOneColor;
+		teamTwoColor = (NetworkManager.singleton as FPSNetworkManager).TeamTwoColor;
+	}
+
 	private void SyncFlagValue(float oldValue, float newValue)
 	{
 		if(render == null) { return; }
-		if(newValue > 0)
+		if(newValue >= 0)
 		{
 			render.material.color = Color.Lerp(Color.white, teamOneColor, newValue / 100);
 		}
-		else if (newValue < 0)
-		{
-			render.material.color = Color.Lerp(Color.white, teamTwoColor, newValue / -100);
-		}
 		else
 		{
-			render.material.color = Color.white;
+			render.material.color = Color.Lerp(Color.white, teamTwoColor, newValue / -100);
 		}
 
 		ClientOnFlagValueChanged?.Invoke(flagIndex, render.material.color);

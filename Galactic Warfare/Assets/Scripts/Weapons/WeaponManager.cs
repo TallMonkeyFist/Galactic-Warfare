@@ -26,8 +26,6 @@ public class WeaponManager : MonoBehaviour
 	[Header("UI")]
 	[Tooltip("Name of the weapon")]
 	[SerializeField] private string weaponName = "Default Weapon";
-	[Tooltip("Weapon icon in the UI")]
-	[SerializeField] private Image weaponIcon = null;
 
 	[Header("Ammo Settings")]
 	[Tooltip("Projectile to spawn on fire")]
@@ -54,9 +52,6 @@ public class WeaponManager : MonoBehaviour
 	[SerializeField] private AudioClip reloadSound = null;
 	[Tooltip("Sound to play on fire")]
 	[SerializeField] private AudioClip drawWeaponSound = null;
-	[Tooltip("Volume the fire sound will be played at")]
-	[Range(0, 1)]
-	[SerializeField] private float fireVolume = 1.0f;
 	[Tooltip("Audio source to play the sound to")]
 	[SerializeField] private AudioSource audioSource = null;
 

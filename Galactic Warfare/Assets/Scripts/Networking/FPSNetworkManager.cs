@@ -4,41 +4,31 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using DataTypes;
 
 public class FPSNetworkManager : NetworkManager
 {
-	public struct PlayerData
-	{
-		public string Name;
-		public ulong SteamID;
-		public bool UseSteam;
-		public int ID;
-	}
-
 	public Texture2D defaultImage;
 	public bool useSteam;
 
-	public List<FPSPlayer> Players = new List<FPSPlayer>();
+	public List<LobbyPlayer> Players = new List<LobbyPlayer>();
 
-	public List<NetworkIdentity> teamOne = null;
-	public List<NetworkIdentity> teamTwo = null;
+	private int LastAssignedTeam = 1;
 	private GamemodeManager gameManager = null;
 
 	public SpawnManager spawnManager = null;
 
-	private bool isGameInProgress = false;
+	public bool IsGameInProgress { get; private set; } = false;
 
-	public static event Action<FPSPlayer, string> ServerSetPlayerName;
 	public static event Action ClientOnConnected;
 	public static event Action ClientOnDisconnected;
+	public static bool DisplayLogInfo = true;
 
 	private string lastLoadedScene;
 
 	private List<PlayerData> playerInfoData = new List<PlayerData>();
-	[Tooltip("Team One Layer")]
-	public LayerMask TeamOneLayer;
-	[Tooltip("Team Two Layer")]
-	public LayerMask TeamTwoLayer;
+	public Color TeamOneColor = Color.red;
+	public Color TeamTwoColor = Color.blue;
 
 	public static ulong LobbyId { get; set; }
 
@@ -54,30 +44,28 @@ public class FPSNetworkManager : NetworkManager
 		base.OnStartServer();
 
 		gameManager = gameManager == null ? gameObject.AddComponent<GamemodeManager>() : gameManager;
-		Players = new List<FPSPlayer>();
-		teamOne = new List<NetworkIdentity>();
-		teamTwo = new List<NetworkIdentity>();
+		Players = new List<LobbyPlayer>();
+		LastAssignedTeam = 1;
 	}
 
 	public override void OnStopServer()
 	{
 		Players.Clear();
-		teamOne.Clear();
-		teamTwo.Clear();
+		LastAssignedTeam = 1;
 		playerInfoData.Clear();
 		if(useSteam)
 		{
 			SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));
 			LobbyId = ulong.MinValue;
 		}
-		isGameInProgress = false;
+		IsGameInProgress = false;
 	}
 
 	public void StartGame(string level)
 	{
 		if(Players.Count < 1) { return; }
 
-		isGameInProgress = true;
+		IsGameInProgress = true;
 
 		ServerChangeScene(level);
 	}
@@ -99,7 +87,7 @@ public class FPSNetworkManager : NetworkManager
 		{
 			//Starting deathmatch
 			gameManager.StartDeathmatch();
-		}
+		}	
 	}
 
 	public override void OnServerAddPlayer(NetworkConnection conn)
@@ -111,20 +99,20 @@ public class FPSNetworkManager : NetworkManager
 
 	public override void OnServerConnect(NetworkConnection conn)
 	{
-		if(isGameInProgress) { conn.Disconnect(); return; }
+		if(IsGameInProgress) { conn.Disconnect(); return; }
 	}
 
 	public override void OnServerDisconnect(NetworkConnection conn)
 	{
-		if(!conn.identity.gameObject.TryGetComponent(out FPSPlayer player)) { base.OnServerDisconnect(conn);  return; }
+		if(!conn.identity.gameObject.TryGetComponent(out LobbyPlayer player)) { base.OnServerDisconnect(conn);  return; }
 
 		try
 		{
-			player.ServerKillPlayer();
+			player.OnServerDisconnect();
 			Players.Remove(player);
-			if(isGameInProgress)
+			if(IsGameInProgress)
 			{
-				gameManager.ServerHandlePlayerDisconnect(player);
+				gameManager.ServerHandlePlayerDisconnect(player.GamePlayer);
 			}
 
 			ServerHandlePlayerDisconnect(conn, player.PlayerTeam);
@@ -132,64 +120,40 @@ public class FPSNetworkManager : NetworkManager
 		}
 		catch (NullReferenceException)
 		{
-			Debug.LogWarning("Caught null reference on server disconnect");
+			Logger.LogWarning("Caught null reference on server disconnect", DisplayLogInfo);
 		}
 
 		base.OnServerDisconnect(conn);
 	}
 
 	[Server]
-	public void AssignTeams()
+	public void ServerAssignTeams()
 	{
 		foreach (KeyValuePair<int, NetworkConnectionToClient> entry in NetworkServer.connections)
 		{
-			Debug.Log(entry.Key);
+			Logger.Log(entry.Key, DisplayLogInfo);
 		}
 	}
 
 	[Server]
-	public void ClearTeams()
+	public void ServerAssignPlayerToTeam(NetworkConnection conn)
 	{
-		teamOne.Clear();
-		teamTwo.Clear();
-	}
+		if (!conn.identity.TryGetComponent(out LobbyPlayer player)) { return; }
 
-	[Server]
-	public void AssignPlayerToTeam(NetworkConnection conn)
-	{
-		if (!conn.identity.TryGetComponent(out FPSPlayer player)) { return; }
-
-		if (teamOne.Count > teamTwo.Count)
+		if (LastAssignedTeam == 0)
 		{
-			teamTwo.Add(conn.identity);
-			player.ServerSetTeam(2);
+			LastAssignedTeam = 1;
+			player.ServerSetTeam(1);
 		}
 		else
 		{
-			teamOne.Add(conn.identity);
-			player.ServerSetTeam(1);
+			LastAssignedTeam = 0;
+			player.ServerSetTeam(0);
 		}
 	}
 
 	[Server]
-	public void AssignPlayerToTeam(NetworkConnection conn, int team)
-	{
-		switch (team)
-		{
-			case 1:
-				teamOne.Add(conn.identity);
-				break;
-			case 2:
-				teamTwo.Add(conn.identity);
-				break;
-			default:
-				Debug.LogWarning("Player is not allowed to join a team other than 1 or 2");
-				break;
-		}
-	}
-
-	[Server]
-	public void RestartScene()
+	public void ServerRestartScene()
 	{
 		ServerChangeScene(lastLoadedScene);
 	}
@@ -207,15 +171,14 @@ public class FPSNetworkManager : NetworkManager
 	[Server]
 	private void ServerInitializePlayer(NetworkConnection conn)
 	{
-
 		// Invalid player prefab
-		if (!conn.identity.TryGetComponent(out FPSPlayer player)) { conn.Disconnect(); return; }
+		if (!conn.identity.TryGetComponent(out LobbyPlayer player)) { conn.Disconnect(); return; }
 
 		//Player already exist on the server
 		if (Players.Contains(player)) { Players.Remove(player); }
 
 		Players.Add(player);
-		player.SetPartyOwner(Players.Count == 1);
+		player.ServerSetPartyOwner(Players.Count == 1);
 
 		PlayerData pd;
 
@@ -228,52 +191,71 @@ public class FPSNetworkManager : NetworkManager
 			pd = GetSteamPlayerData(conn, player);
 		}
 
+		player.ServerSetPlayerData(pd);
 		ServerAddPlayerData(pd);
 		ServerSyncPlayerList();
-		AssignPlayerToTeam(conn);
+		ServerAssignPlayerToTeam(conn);
 	}
 
-	private PlayerData GetSteamPlayerData(NetworkConnection conn, FPSPlayer player)
+	private PlayerData GetSteamPlayerData(NetworkConnection conn, LobbyPlayer player)
 	{
 		CSteamID steamId = SteamMatchmaking.GetLobbyMemberByIndex(new CSteamID(LobbyId), numPlayers - 1);
-		player.SetSteamId(steamId.m_SteamID);
-		player.SetDisplayName(SteamFriends.GetFriendPersonaName(steamId));
+		player.ServerSetSteamID(steamId.m_SteamID);
 
 		PlayerData pd;
-		pd.ID = conn.connectionId;
+		pd.ID = conn.identity.netId;
 		pd.UseSteam = true;
 		pd.Name = SteamFriends.GetFriendPersonaName(steamId);
 		pd.SteamID = steamId.m_SteamID;
+		pd.Team = player.PlayerTeam;
 
 		return pd;
 	}
 
-	private PlayerData GetPlayerData(NetworkConnection conn, FPSPlayer player)
+	private PlayerData GetPlayerData(NetworkConnection conn, LobbyPlayer player)
 	{
-		player.SetSteamId(ulong.MinValue);
-		player.SetDisplayName($"Player {Players.Count}");
+		player.ServerSetSteamID(ulong.MinValue);
 
 		PlayerData pd;
-		pd.ID = conn.connectionId;
+		pd.ID = conn.identity.netId;
 		pd.UseSteam = false;
 		pd.Name = $"Player {Players.Count}";
 		pd.SteamID = ulong.MinValue;
+		pd.Team = player.PlayerTeam;
 
 		return pd;
 	}
 
 	[Server]
+	public void ServerUpdatePlayerData(LobbyPlayer player)
+	{
+		PlayerData newPlayerData;
+		for(int i = 0; i < playerInfoData.Count; i++)
+		{
+			if (playerInfoData[i].ID == player.PlayerData.ID)
+			{
+				newPlayerData = playerInfoData[i];
+				newPlayerData.Team = player.PlayerTeam;
+				playerInfoData[i] = newPlayerData;
+				ServerSyncPlayerList();
+				return;
+			}
+		}
+	}
+
+	[Server]
 	private void ServerSyncPlayerList()
 	{
-		foreach (FPSPlayer player in Players)
+		for (int i = 0; i < Players.Count; i++)
 		{
+			LobbyPlayer player = Players[i];
 			NetworkConnection conn = player.connectionToClient;
-			player.TargetClearPlayerList(conn);
-			for (int i = 0; i < playerInfoData.Count; i++)
+			player.TargetClearPlayerInfoList(conn);
+			foreach(PlayerData data in playerInfoData)
 			{
-				PlayerData d = playerInfoData[i];
-				player.TargetAddPlayerInfo(conn, d.Name, d.SteamID, d.UseSteam, d.ID);
+				player.TargetAddPlayerInfo(conn, data.Name, data.SteamID, data.UseSteam, data.ID, data.Team);
 			}
+			player.TargetSetLobbyChangeTeamButton(i);
 		}
 	}
 
@@ -286,20 +268,7 @@ public class FPSNetworkManager : NetworkManager
 	[Server]
 	private void ServerHandlePlayerDisconnect(NetworkConnection conn, int team)
 	{
-		switch (team)
-		{
-			case 1:
-				teamOne.Remove(conn.identity);
-				break;
-			case 2:
-				teamTwo.Remove(conn.identity);
-				break;
-			default:
-				Debug.LogWarning("ServerHandlePlayerDisconnect: Player team was not 1 or 2");
-				break;
-		}
-
-		foreach (FPSPlayer player in Players)
+		foreach (LobbyPlayer player in Players)
 		{
 			player.TargetRemovePlayerInfo(player.connectionToClient, conn.connectionId);
 		}
@@ -326,8 +295,7 @@ public class FPSNetworkManager : NetworkManager
 	public override void OnStopClient()
 	{
 		Players.Clear();
-		teamOne.Clear();
-		teamTwo.Clear();
+		LastAssignedTeam = 1;
 		if (useSteam)
 		{
 			SteamMatchmaking.LeaveLobby(new CSteamID(LobbyId));

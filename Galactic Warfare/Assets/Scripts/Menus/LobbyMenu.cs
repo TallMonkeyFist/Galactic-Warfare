@@ -1,4 +1,5 @@
 ﻿using Mirror;
+using DataTypes;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -25,23 +26,27 @@ public class LobbyMenu : MonoBehaviour
 	[SerializeField] private TMP_Text[] playerNameTexts = null;
 	[Tooltip("Image elements to display player avatars")]
 	[SerializeField] private RawImage[] playerAvatarImages = null;
+	[Tooltip("Button elements to change player teams")]
+	public Button[] playerChangeTeamButtons = null;
 	[Tooltip("Level to start")]
 	[SerializeField] private string level = "Map_01";
 
+	private FPSNetworkManager NM = null;
 	private int activeLevelIndex = 0;
 
 	private void OnEnable()
 	{
+		NM = NetworkManager.singleton as FPSNetworkManager;
 		FPSNetworkManager.ClientOnConnected += HandleClientConnected;
-		FPSPlayer.AuthorityOnPartyOwnerStateUpdated += AuthorityHandlePartyOwnerStateUpdated;
-		FPSPlayer.ClientOnInfoUpdated += ClientHandleInfoUpdated;
+		LobbyPlayer.AuthorityOnPartyOwnerStateUpdated += AuthorityHandlePartyOwnerStateUpdated;
+		LobbyPlayer.ClientOnPlayerInfoUpdated += ClientHandleInfoUpdated;
 	}
 
 	private void OnDestroy()
 	{
 		FPSNetworkManager.ClientOnConnected -= HandleClientConnected;
-		FPSPlayer.AuthorityOnPartyOwnerStateUpdated -= AuthorityHandlePartyOwnerStateUpdated;
-		FPSPlayer.ClientOnInfoUpdated -= ClientHandleInfoUpdated;
+		LobbyPlayer.AuthorityOnPartyOwnerStateUpdated -= AuthorityHandlePartyOwnerStateUpdated;
+		LobbyPlayer.ClientOnPlayerInfoUpdated -= ClientHandleInfoUpdated;
 	}
 
 	private void HandleClientConnected()
@@ -56,20 +61,27 @@ public class LobbyMenu : MonoBehaviour
 		levelDisplayImage.gameObject.SetActive(state);
 	}
 
-	private void ClientHandleInfoUpdated(List<FPSPlayer.PlayerDisplayInfo> players)
+	private void ClientHandleInfoUpdated(List<PlayerDisplayInfo> players)
 	{
-		FPSNetworkManager manager = (FPSNetworkManager)NetworkManager.singleton;
+		NM = (FPSNetworkManager)NetworkManager.singleton;
 
+		ColorBlock colors;
 		for(int i = 0; i < players.Count; i++)
 		{
 			playerNameTexts[i].text = players[i].Name;
 			playerAvatarImages[i].texture = players[i].Avatar;
+			colors = playerChangeTeamButtons[i].colors;
+			colors.normalColor = colors.disabledColor = colors.pressedColor = colors.highlightedColor = colors.selectedColor = players[i].Team == 0 ? NM.TeamOneColor : NM.TeamTwoColor;
+			playerChangeTeamButtons[i].colors = colors;
 		}
 
 		for(int i = players.Count; i < playerNameTexts.Length; i++)
 		{
 			playerNameTexts[i].text = "Waiting for Player...";
-			playerAvatarImages[i].texture = manager.defaultImage;
+			playerAvatarImages[i].texture = NM.defaultImage;
+			colors = playerChangeTeamButtons[i].colors;
+			colors.normalColor = colors.disabledColor = colors.pressedColor = colors.highlightedColor = colors.selectedColor = Color.white;
+			playerChangeTeamButtons[i].colors = colors;
 		}
 
 		startGameButton.interactable = players.Count >= 1;
@@ -77,7 +89,7 @@ public class LobbyMenu : MonoBehaviour
 
 	public void StartGame()
 	{
-		if(NetworkClient.connection.identity.TryGetComponent(out FPSPlayer player))
+		if(NetworkClient.connection.identity.TryGetComponent(out LobbyPlayer player))
 		{
 			player.CmdStartGame(level);
 		}
